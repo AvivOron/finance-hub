@@ -4,8 +4,6 @@ A clean, minimal Mac desktop app for tracking your monthly financial net worth o
 
 Built with Electron + React + TypeScript.
 
-![Dashboard screenshot showing net worth charts and summary cards](.github/screenshot.png)
-
 ## Features
 
 - **Account Management** — Create custom asset and liability categories (Checking, Brokerage, 401k, Mortgage, etc.)
