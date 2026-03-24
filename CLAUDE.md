@@ -24,12 +24,14 @@ npm run dist       # Build + package as .dmg installer → dist/
 
 ### Renderer layout
 ```
-App.tsx             state-based router (no react-router)
-  Sidebar.tsx       left nav
+App.tsx             state-based router (no react-router); wraps tree in CurrencyProvider
+  Sidebar.tsx       left nav + ₪/$ currency toggle in footer
   Dashboard.tsx     charts + summary cards
   Accounts.tsx      CRUD for account categories
   SnapshotEntry.tsx monthly balance entry form
   History.tsx       table of past snapshots
+context/
+  CurrencyContext.tsx  React context: Currency ('NIS'|'USD'), default NIS, persisted to localStorage
 ```
 
 ### Data hook
@@ -44,7 +46,7 @@ AppData           { accounts: Account[], snapshots: MonthlySnapshot[] }
 
 ## Conventions
 
-- All currency is USD; use `formatCurrency` / `formatCurrencyShort` from `utils/index.ts`
+- Currency is NIS (₪) by default, switchable to USD ($); use `formatCurrency(value, currency)` / `formatCurrencyShort(value, currency)` from `utils/index.ts`; consume `useCurrency()` from `CurrencyContext` to get the active currency
 - Dates are stored as `YYYY-MM` strings; use `formatMonthLabel` / `formatMonthFull` for display
 - IDs are generated with `generateId()` (base36 timestamp + random suffix)
 - Dark theme only — background `#09090f`, cards `#14141f`, accent `indigo-500`
@@ -55,6 +57,8 @@ AppData           { accounts: Account[], snapshots: MonthlySnapshot[] }
 `app.getPath('userData')/networth-data.json`
 - macOS: `~/Library/Application Support/networth-tracker/networth-data.json`
 
-## electron-vite config
+## Build config
 
 `electron.vite.config.ts` — three separate Vite builds (main, preload, renderer). The renderer uses `@renderer` as a path alias for `src/renderer/src/`.
+
+`src/renderer/vite.config.ts` — standalone Vite config for the renderer, used when running a browser preview (e.g. VS Code launch.json dev server). Adds `@vitejs/plugin-react` so JSX works without React in scope.

@@ -10,6 +10,7 @@ Built with Electron + React + TypeScript.
 - **Monthly Snapshots** — Record balances once a month per account; auto-detects and lets you edit existing snapshots
 - **Dashboard** — Net worth line chart, assets vs. liabilities area chart, and summary cards with month-over-month change
 - **History** — Table of all past snapshots with edit and delete support
+- **Currency switching** — Toggle between NIS (₪, default) and USD ($) from the sidebar; persisted across restarts
 - **Local storage** — All data is saved as JSON in your app data directory; no cloud, no accounts
 
 ## Tech Stack
