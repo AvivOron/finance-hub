@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Pencil, Trash2, X, Check, CalendarDays } from 'lucide-react'
 import { AppData, MonthlySnapshot } from '../types'
 import { formatMonthFull, formatCurrency, formatCurrencyShort } from '../utils'
+import { useCurrency } from '../context/CurrencyContext'
 
 interface HistoryProps {
   data: AppData
@@ -10,6 +11,9 @@ interface HistoryProps {
 }
 
 export function History({ data, onSave, onEditSnapshot }: HistoryProps) {
+  const { currency } = useCurrency()
+  const fmt = (v: number) => formatCurrency(v, currency)
+  const fmtShort = (v: number) => formatCurrencyShort(v, currency)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   const sorted = [...data.snapshots].sort((a, b) => b.date.localeCompare(a.date))
@@ -90,10 +94,10 @@ export function History({ data, onSave, onEditSnapshot }: HistoryProps) {
                   <span className="font-medium text-gray-200">{formatMonthFull(snapshot.date)}</span>
                 </td>
                 <td className="px-5 py-4 text-right text-emerald-400 font-medium">
-                  {formatCurrency(stats.assets)}
+                  {fmt(stats.assets)}
                 </td>
                 <td className="px-5 py-4 text-right text-red-400 font-medium">
-                  {formatCurrency(stats.liabilities)}
+                  {fmt(stats.liabilities)}
                 </td>
                 <td className="px-5 py-4 text-right">
                   <span
@@ -101,7 +105,7 @@ export function History({ data, onSave, onEditSnapshot }: HistoryProps) {
                       stats.netWorth >= 0 ? 'text-white font-bold' : 'text-red-400 font-bold'
                     }
                   >
-                    {formatCurrency(stats.netWorth)}
+                    {fmt(stats.netWorth)}
                   </span>
                 </td>
                 <td className="px-5 py-4 text-right">
@@ -112,7 +116,7 @@ export function History({ data, onSave, onEditSnapshot }: HistoryProps) {
                       }
                     >
                       {momChange >= 0 ? '+' : ''}
-                      {formatCurrencyShort(momChange)}
+                      {fmtShort(momChange)}
                     </span>
                   ) : (
                     <span className="text-gray-600">—</span>

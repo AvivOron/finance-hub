@@ -1,6 +1,7 @@
 import { LayoutDashboard, PlusCircle, Wallet, History } from 'lucide-react'
 import { Page } from '../types'
 import { cn } from '../utils'
+import { useCurrency } from '../context/CurrencyContext'
 
 interface SidebarProps {
   page: Page
@@ -15,6 +16,7 @@ const navItems: { id: Page; label: string; icon: React.ElementType }[] = [
 ]
 
 export function Sidebar({ page, onNavigate }: SidebarProps) {
+  const { currency, setCurrency } = useCurrency()
   return (
     <aside className="flex flex-col w-[220px] min-w-[220px] bg-[#0f0f18] border-r border-white/5 h-full">
       {/* Title bar spacer for traffic lights */}
@@ -47,8 +49,24 @@ export function Sidebar({ page, onNavigate }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-white/5">
+      <div className="px-4 py-4 border-t border-white/5 flex items-center justify-between">
         <p className="text-xs text-gray-600">v0.1.0</p>
+        <div className="flex items-center bg-white/5 rounded-md p-0.5">
+          {(['NIS', 'USD'] as const).map((c) => (
+            <button
+              key={c}
+              onClick={() => setCurrency(c)}
+              className={cn(
+                'text-xs px-2 py-0.5 rounded transition-colors',
+                currency === c
+                  ? 'bg-indigo-500/30 text-indigo-300 font-medium'
+                  : 'text-gray-500 hover:text-gray-300'
+              )}
+            >
+              {c === 'NIS' ? '₪' : '$'}
+            </button>
+          ))}
+        </div>
       </div>
     </aside>
   )

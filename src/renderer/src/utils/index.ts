@@ -1,18 +1,25 @@
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(amount)
-}
+export type Currency = 'USD' | 'NIS'
 
-export function formatCurrencyShort(amount: number): string {
+const CURRENCY_SYMBOL: Record<Currency, string> = { USD: '$', NIS: '₪' }
+
+export function formatCurrency(amount: number, currency: Currency = 'USD'): string {
+  const symbol = CURRENCY_SYMBOL[currency]
   const abs = Math.abs(amount)
   const sign = amount < 0 ? '-' : ''
-  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`
-  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(0)}K`
-  return formatCurrency(amount)
+  const formatted = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(abs)
+  return `${sign}${symbol}${formatted}`
+}
+
+export function formatCurrencyShort(amount: number, currency: Currency = 'USD'): string {
+  const symbol = CURRENCY_SYMBOL[currency]
+  const abs = Math.abs(amount)
+  const sign = amount < 0 ? '-' : ''
+  if (abs >= 1_000_000) return `${sign}${symbol}${(abs / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000) return `${sign}${symbol}${(abs / 1_000).toFixed(0)}K`
+  return formatCurrency(amount, currency)
 }
 
 export function formatMonthLabel(date: string): string {

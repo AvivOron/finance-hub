@@ -5,6 +5,7 @@ import { Accounts } from './components/Accounts'
 import { SnapshotEntry } from './components/SnapshotEntry'
 import { History } from './components/History'
 import { useData } from './hooks/useData'
+import { CurrencyProvider } from './context/CurrencyContext'
 import { Page } from './types'
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
   }
 
   return (
+    <CurrencyProvider>
     <div className="flex h-screen bg-[#09090f] overflow-hidden">
       <Sidebar page={page} onNavigate={handleNavigate} />
 
@@ -67,5 +69,6 @@ export default function App() {
         )}
       </main>
     </div>
+    </CurrencyProvider>
   )
 }

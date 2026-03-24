@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, Save, AlertCircle } from 'lucide-react'
 import { Account, MonthlySnapshot, SnapshotEntry as SnapshotEntryType } from '../types'
 import { getCurrentMonth, generateId, formatMonthFull, formatCurrency, cn } from '../utils'
+import { useCurrency } from '../context/CurrencyContext'
 
 interface SnapshotEntryProps {
   accounts: Account[]
@@ -24,6 +25,10 @@ export function SnapshotEntry({
   editingSnapshotId,
   onEditDone
 }: SnapshotEntryProps) {
+  const { currency } = useCurrency()
+  const fmt = (v: number) => formatCurrency(v, currency)
+  const currencySymbol = currency === 'NIS' ? '₪' : '$'
+
   const [month, setMonth] = useState(getCurrentMonth())
   const [balances, setBalances] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
@@ -159,6 +164,7 @@ export function SnapshotEntry({
             color="emerald"
             accounts={assets}
             balances={balances}
+            currencySymbol={currencySymbol}
             onChange={(id, val) => setBalances({ ...balances, [id]: val })}
           />
         )}
@@ -170,6 +176,7 @@ export function SnapshotEntry({
             color="red"
             accounts={liabilities}
             balances={balances}
+            currencySymbol={currencySymbol}
             onChange={(id, val) => setBalances({ ...balances, [id]: val })}
           />
         )}
@@ -179,16 +186,16 @@ export function SnapshotEntry({
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
               <p className="text-xs text-gray-500 mb-0.5">Total Assets</p>
-              <p className="font-semibold text-emerald-400">{formatCurrency(totalAssets)}</p>
+              <p className="font-semibold text-emerald-400">{fmt(totalAssets)}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-0.5">Total Liabilities</p>
-              <p className="font-semibold text-red-400">{formatCurrency(totalLiabilities)}</p>
+              <p className="font-semibold text-red-400">{fmt(totalLiabilities)}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-0.5">Net Worth</p>
               <p className={cn('font-bold text-base', netWorth >= 0 ? 'text-white' : 'text-red-400')}>
-                {formatCurrency(netWorth)}
+                {fmt(netWorth)}
               </p>
             </div>
           </div>
@@ -216,12 +223,14 @@ function AccountSection({
   color,
   accounts,
   balances,
+  currencySymbol,
   onChange
 }: {
   title: string
   color: 'emerald' | 'red'
   accounts: Account[]
   balances: Record<string, string>
+  currencySymbol: string
   onChange: (id: string, val: string) => void
 }) {
   return (
@@ -244,7 +253,7 @@ function AccountSection({
               )}
             </div>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{currencySymbol}</span>
               <input
                 type="number"
                 min="0"

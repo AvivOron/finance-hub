@@ -13,6 +13,7 @@ import {
 import { TrendingUp, TrendingDown, Minus, DollarSign, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 import { AppData } from '../types'
 import { formatCurrency, formatCurrencyShort, formatMonthLabel, formatMonthFull } from '../utils'
+import { useCurrency } from '../context/CurrencyContext'
 
 interface DashboardProps {
   data: AppData
@@ -50,6 +51,10 @@ const tooltipStyle = {
 const tooltipLabelStyle = { color: '#e5e7eb', fontWeight: 600, marginBottom: 4 }
 
 export function Dashboard({ data, onNavigate }: DashboardProps) {
+  const { currency } = useCurrency()
+  const fmt = (v: number) => formatCurrency(v, currency)
+  const fmtShort = (v: number) => formatCurrencyShort(v, currency)
+
   const stats = computeMonthStats(data)
   const latest = stats[stats.length - 1]
   const prev = stats[stats.length - 2]
@@ -75,14 +80,14 @@ export function Dashboard({ data, onNavigate }: DashboardProps) {
       <div className="grid grid-cols-4 gap-4">
         <SummaryCard
           label="Net Worth"
-          value={formatCurrency(currentNetWorth)}
+          value={fmt(currentNetWorth)}
           icon={<DollarSign size={18} />}
           accent="indigo"
           sub={
             momChange !== null ? (
               <span className={momChange >= 0 ? 'text-emerald-400' : 'text-red-400'}>
                 {momChange >= 0 ? <ArrowUpRight size={13} className="inline" /> : <ArrowDownRight size={13} className="inline" />}
-                {formatCurrencyShort(Math.abs(momChange))}
+                {fmtShort(Math.abs(momChange))}
                 {momPct !== null && ` (${momPct > 0 ? '+' : ''}${momPct.toFixed(1)}%)`}
               </span>
             ) : null
@@ -90,13 +95,13 @@ export function Dashboard({ data, onNavigate }: DashboardProps) {
         />
         <SummaryCard
           label="Total Assets"
-          value={formatCurrency(currentAssets)}
+          value={fmt(currentAssets)}
           icon={<TrendingUp size={18} />}
           accent="emerald"
         />
         <SummaryCard
           label="Total Liabilities"
-          value={formatCurrency(currentLiabilities)}
+          value={fmt(currentLiabilities)}
           icon={<TrendingDown size={18} />}
           accent="red"
         />
@@ -104,7 +109,7 @@ export function Dashboard({ data, onNavigate }: DashboardProps) {
           label="MoM Change"
           value={
             momChange !== null
-              ? (momChange >= 0 ? '+' : '') + formatCurrency(momChange)
+              ? (momChange >= 0 ? '+' : '') + fmt(momChange)
               : '—'
           }
           icon={<Minus size={18} />}
@@ -138,13 +143,13 @@ export function Dashboard({ data, onNavigate }: DashboardProps) {
                   tick={{ fill: '#6b7280', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={formatCurrencyShort}
+                  tickFormatter={fmtShort}
                   width={72}
                 />
                 <Tooltip
                   contentStyle={tooltipStyle}
                   labelStyle={tooltipLabelStyle}
-                  formatter={(v) => [formatCurrency(v as number), 'Net Worth']}
+                  formatter={(v) => [fmt(v as number), 'Net Worth']}
                 />
                 <Line
                   type="monotone"
@@ -183,14 +188,14 @@ export function Dashboard({ data, onNavigate }: DashboardProps) {
                   tick={{ fill: '#6b7280', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={formatCurrencyShort}
+                  tickFormatter={fmtShort}
                   width={72}
                 />
                 <Tooltip
                   contentStyle={tooltipStyle}
                   labelStyle={tooltipLabelStyle}
                   formatter={(v, name) => [
-                    formatCurrency(v as number),
+                    fmt(v as number),
                     name === 'assets' ? 'Assets' : 'Liabilities'
                   ]}
                 />
