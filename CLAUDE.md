@@ -11,6 +11,8 @@ npm run dev        # Start Electron app with hot-reload (opens native window)
 npm run build      # Production build → out/
 npm run preview    # Preview the production build
 npm run typecheck  # Type-check main + renderer without building
+npm run pack       # Build + package as unpacked .app (fast, no DMG)
+npm run dist       # Build + package as .dmg installer → dist/
 ```
 
 ## Architecture

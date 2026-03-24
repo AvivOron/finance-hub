@@ -30,7 +30,7 @@ Built with Electron + React + TypeScript.
 - Node.js 18+
 - npm 9+
 
-### Install & run
+### Install & run in dev mode
 
 ```bash
 git clone https://github.com/AvivOron/networth-tracker.git
@@ -41,13 +41,22 @@ npm run dev
 
 This opens the full Electron app with hot-reload.
 
-### Build for production
+### Package as a macOS app
 
 ```bash
-npm run build
+npm run dist
 ```
 
-Output is written to `out/`.
+This builds the app and produces a `.dmg` installer in `dist/`:
+
+| File | Architecture |
+|---|---|
+| `NetWorth Tracker-x.x.x-arm64.dmg` | Apple Silicon |
+| `NetWorth Tracker-x.x.x.dmg` | Intel |
+
+Open the DMG, drag **NetWorth Tracker** to `/Applications`, and launch it like any other app.
+
+> **First launch on macOS:** If Gatekeeper blocks the app (unsigned build), right-click → Open → Open anyway.
 
 ## Project Structure
 
