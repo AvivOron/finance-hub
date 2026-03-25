@@ -26,10 +26,11 @@ npm run dist       # Build + package as .dmg installer → dist/
 ```
 App.tsx             state-based router (no react-router); wraps tree in CurrencyProvider
   Sidebar.tsx       left nav + ₪/$ currency toggle in footer
-  Dashboard.tsx     charts + summary cards
-  Accounts.tsx      CRUD for account categories
-  SnapshotEntry.tsx monthly balance entry form
-  History.tsx       table of past snapshots
+  Dashboard.tsx     charts + summary cards + family member/account filtering
+  Accounts.tsx      CRUD for account categories, family member management
+  SnapshotEntry.tsx monthly balance entry form with sub-balances and timestamps
+  History.tsx       table of past snapshots with edit/delete
+  Settings.tsx      data export to JSON
 context/
   CurrencyContext.tsx  React context: Currency ('NIS'|'USD'), default NIS, persisted to localStorage
 ```
@@ -39,9 +40,11 @@ context/
 
 ### Key types (`src/renderer/src/types/index.ts`)
 ```ts
-Account           { id, name, type: 'asset'|'liability', notes? }
+Account           { id, name, type: 'asset'|'liability', kind?, owner?, notes? }
+AccountKind       'bank' | 'brokerage' | 'child' | 'custom'
+SnapshotEntry     { accountId, balance, subBalances?, lastUpdatedAt? }
 MonthlySnapshot   { id, date (YYYY-MM), entries[], createdAt, updatedAt }
-AppData           { accounts: Account[], snapshots: MonthlySnapshot[] }
+AppData           { accounts: Account[], snapshots: MonthlySnapshot[], familyMembers? }
 ```
 
 ## Conventions

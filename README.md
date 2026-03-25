@@ -6,12 +6,13 @@ Built with Electron + React + TypeScript.
 
 ## Features
 
-- **Account Management** — Create custom asset and liability categories (Checking, Brokerage, 401k, Mortgage, etc.)
-- **Monthly Snapshots** — Record balances once a month per account; auto-detects and lets you edit existing snapshots
-- **Dashboard** — Net worth line chart, assets vs. liabilities area chart, and summary cards with month-over-month change
+- **Account Management** — Create custom asset and liability categories (Checking, Brokerage, 401k, Mortgage, etc.) with owner assignment and account types
+- **Monthly Snapshots** — Record balances once a month per account; auto-detects and lets you edit existing snapshots with last-updated timestamps
+- **Dashboard** — Net worth line chart, assets vs. liabilities area chart, and summary cards with month-over-month change; filter by family member or account
 - **History** — Table of all past snapshots with edit and delete support
 - **Currency switching** — Toggle between NIS (₪, default) and USD ($) from the sidebar; persisted across restarts
-- **Local storage** — All data is saved as JSON in your app data directory; no cloud, no accounts
+- **Data backup** — Export your data as JSON with one click; save to Dropbox, email, or Google Drive manually
+- **Local storage** — All data is saved as JSON in your app data directory; no cloud login required
 
 ## Tech Stack
 
@@ -80,15 +81,30 @@ interface Account {
   id: string
   name: string
   type: 'asset' | 'liability'
+  kind?: 'bank' | 'brokerage' | 'child' | 'custom'  // account subtype
+  owner?: string         // family member name
   notes?: string
+}
+
+interface SnapshotEntry {
+  accountId: string
+  balance: number
+  subBalances?: Record<string, number>  // for multi-part accounts (e.g., checking + savings)
+  lastUpdatedAt?: string                // ISO timestamp of last update
 }
 
 interface MonthlySnapshot {
   id: string
   date: string           // YYYY-MM
-  entries: { accountId: string; balance: number }[]
+  entries: SnapshotEntry[]
   createdAt: string
   updatedAt: string
+}
+
+interface AppData {
+  accounts: Account[]
+  snapshots: MonthlySnapshot[]
+  familyMembers?: string[]  // list of family member names
 }
 ```
 
