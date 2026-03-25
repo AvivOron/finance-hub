@@ -1,4 +1,4 @@
-import { LayoutDashboard, PlusCircle, Wallet, History, Settings as SettingsIcon } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Wallet, History, Settings as SettingsIcon, Receipt } from 'lucide-react'
 import { Page } from '../types'
 import { cn } from '../utils'
 import { useCurrency } from '../context/CurrencyContext'
@@ -13,6 +13,7 @@ const navItems: { id: Page; label: string; icon: React.ElementType }[] = [
   { id: 'accounts', label: 'Accounts', icon: Wallet },
   { id: 'snapshot', label: 'Enter Snapshot', icon: PlusCircle },
   { id: 'history', label: 'History', icon: History },
+  { id: 'expenses', label: 'Expenses', icon: Receipt },
   { id: 'settings', label: 'Settings', icon: SettingsIcon }
 ]
 

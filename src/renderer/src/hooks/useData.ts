@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { AppData, Account, MonthlySnapshot } from '../types'
+import { AppData, Account, MonthlySnapshot, RecurringExpense } from '../types'
 
 const defaultData: AppData = { accounts: [], snapshots: [], familyMembers: [] }
 const LS_KEY = 'networth-tracker-data'
@@ -70,5 +70,13 @@ export function useData() {
     [data, saveAll]
   )
 
-  return { data, loading, saveAccounts, saveSnapshots, saveFamilyMembers }
+  const saveExpenses = useCallback(
+    async (expenses: RecurringExpense[]): Promise<void> => {
+      const newData = { ...data, expenses }
+      await saveAll(newData)
+    },
+    [data, saveAll]
+  )
+
+  return { data, loading, saveAccounts, saveSnapshots, saveFamilyMembers, saveExpenses }
 }

@@ -5,6 +5,7 @@ import { Accounts } from './components/Accounts'
 import { SnapshotEntry } from './components/SnapshotEntry'
 import { History } from './components/History'
 import { Settings } from './components/Settings'
+import { Expenses } from './components/Expenses'
 import { useData } from './hooks/useData'
 import { CurrencyProvider } from './context/CurrencyContext'
 import { Page } from './types'
@@ -15,7 +16,8 @@ export default function App() {
     loading,
     saveAccounts,
     saveSnapshots,
-    saveFamilyMembers
+    saveFamilyMembers,
+    saveExpenses
   } = useData()
   const [page, setPage] = useState<Page>('dashboard')
   const [editingSnapshotId, setEditingSnapshotId] = useState<string | null>(null)
@@ -78,6 +80,13 @@ export default function App() {
                 data={data}
                 onSave={saveSnapshots}
                 onEditSnapshot={handleEditSnapshot}
+              />
+            )}
+            {page === 'expenses' && (
+              <Expenses
+                expenses={data.expenses || []}
+                familyMembers={data.familyMembers || []}
+                onSave={saveExpenses}
               />
             )}
             {page === 'settings' && (

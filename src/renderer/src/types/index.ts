@@ -37,6 +37,20 @@ export interface AppData {
   snapshots: MonthlySnapshot[]
   familyMembers?: string[] // list of family member names
   driveSync?: DriveSync // Google Drive sync configuration
+  expenses?: RecurringExpense[]
 }
 
-export type Page = 'dashboard' | 'snapshot' | 'accounts' | 'history' | 'settings'
+export type ExpenseCategory = 'housing' | 'childcare' | 'subscriptions' | 'insurance' | 'utilities' | 'transport' | 'other'
+
+export interface RecurringExpense {
+  id: string
+  name: string
+  amount: number
+  category: ExpenseCategory
+  billingCycle: 'monthly' | 'yearly'
+  owner?: string // family member
+  notes?: string
+  active: boolean
+}
+
+export type Page = 'dashboard' | 'snapshot' | 'accounts' | 'history' | 'expenses' | 'settings'
