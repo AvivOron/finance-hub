@@ -148,14 +148,14 @@ export function useData() {
     [data]
   )
 
-  const reloadFromDrive = useCallback(async (): Promise<void> => {
-    const currentData = data
-    if (!currentData.driveSync?.enabled || !currentData.driveSync.accessToken) {
-      throw new Error('Google Drive sync is not enabled')
+  const reloadFromDrive = useCallback(async (driveSync?: AppData['driveSync']): Promise<void> => {
+    const syncConfig = driveSync || data.driveSync
+    if (!syncConfig?.accessToken) {
+      throw new Error('Google Drive sync is not configured')
     }
 
     try {
-      const driveData = await DriveSyncService.downloadData(currentData.driveSync)
+      const driveData = await DriveSyncService.downloadData(syncConfig)
       if (driveData) {
         setData(driveData)
         // Save the downloaded data locally as well

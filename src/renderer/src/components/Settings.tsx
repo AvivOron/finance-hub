@@ -7,7 +7,7 @@ import { DriveSyncService } from '../services/driveSync'
 interface SettingsProps {
   data: AppData
   onUpdateDriveSync: (driveSync: DriveSync) => Promise<void>
-  onReloadFromDrive?: () => Promise<void>
+  onReloadFromDrive?: (driveSync?: DriveSync) => Promise<void>
 }
 
 export function Settings({ data, onUpdateDriveSync, onReloadFromDrive }: SettingsProps) {
@@ -46,7 +46,25 @@ export function Settings({ data, onUpdateDriveSync, onReloadFromDrive }: Setting
         fileId,
         lastSyncAt: driveSync.lastSyncAt
       })
-      setSuccess('Successfully connected to Google Drive')
+
+      // Auto-reload data from Drive after successful connection
+      console.log('Auto-reload check:', { hasReloadFunc: !!onReloadFromDrive, fileId })
+      if (onReloadFromDrive && fileId) {
+        try {
+          console.log('Starting auto-reload...')
+          // Pass the new driveSync config so we don't wait for state update
+          const newDriveSync = { enabled: true, accessToken, fileId, lastSyncAt: driveSync.lastSyncAt }
+          await onReloadFromDrive(newDriveSync)
+          console.log('Auto-reload successful!')
+          setSuccess('Successfully connected to Google Drive and loaded your data!')
+        } catch (err) {
+          console.error('Auto-reload failed:', err)
+          setSuccess('Successfully connected to Google Drive. Click refresh to load your data.')
+        }
+      } else {
+        console.log('Skipping auto-reload - missing condition')
+        setSuccess('Successfully connected to Google Drive')
+      }
     } catch (err) {
       setError(`Failed to connect to Google Drive: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
