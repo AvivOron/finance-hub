@@ -3,3 +3,8 @@ out
 dist
 .DS_Store
 *.local
+
+# Environment variables
+.env
+.env.local
+.env.*.local
