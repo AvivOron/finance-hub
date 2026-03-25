@@ -62,7 +62,7 @@ export default function App() {
             </div>
           )}
 
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
             {page === 'dashboard' && (
               <Dashboard data={data} onNavigate={handleNavigate} />
             )}
