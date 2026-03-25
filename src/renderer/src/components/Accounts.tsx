@@ -1,13 +1,12 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, X, Check, Landmark, LineChart, Users, Baby, Globe } from 'lucide-react'
-import { Account, AccountKind } from '../types'
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Check, Landmark, LineChart, Baby, Globe, X } from 'lucide-react'
+import { Account, AccountKind, FamilyMember } from '../types'
 import { generateId, cn } from '../utils'
 
 interface AccountsProps {
   accounts: Account[]
-  familyMembers: string[]
+  familyMembers: FamilyMember[]
   onSave: (accounts: Account[]) => Promise<void>
-  onSaveFamilyMembers: (members: string[]) => Promise<void>
 }
 
 type FormState = {
@@ -56,15 +55,20 @@ const FAMILY_MEMBER_COLORS = [
   'text-fuchsia-300 bg-fuchsia-500/10 border-fuchsia-500/20'
 ]
 
-export function Accounts({ accounts, familyMembers, onSave, onSaveFamilyMembers }: AccountsProps) {
+export function Accounts({ accounts, familyMembers: rawFamilyMembers, onSave }: AccountsProps) {
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [saving, setSaving] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
-  const [showFamilyModal, setShowFamilyModal] = useState(false)
-  const [newMemberName, setNewMemberName] = useState('')
-  const [savingMember, setSavingMember] = useState(false)
+
+  // Ensure familyMembers is properly formatted
+  const familyMembers: FamilyMember[] = rawFamilyMembers.map((m: any) => {
+    if (typeof m === 'string') {
+      return { name: m, isChild: false }
+    }
+    return m as FamilyMember
+  })
 
   const assets = accounts.filter((a) => a.type === 'asset')
   const liabilities = accounts.filter((a) => a.type === 'liability')
@@ -85,7 +89,6 @@ export function Accounts({ accounts, familyMembers, onSave, onSaveFamilyMembers 
     if (!form.name.trim()) return
     setSaving(true)
     try {
-      console.log('Starting account save...')
       let updated: Account[]
       if (editingId) {
         updated = accounts.map((a) =>
@@ -122,22 +125,6 @@ export function Accounts({ accounts, familyMembers, onSave, onSaveFamilyMembers 
     setDeleteConfirm(null)
   }
 
-  async function handleAddFamilyMember() {
-    if (!newMemberName.trim()) return
-    setSavingMember(true)
-    try {
-      const updated = [...(familyMembers || []), newMemberName.trim()]
-      await onSaveFamilyMembers(updated)
-    } catch (error) {
-      console.error('Error saving family member:', error)
-      alert('Error saving family member. Please try again.')
-    } finally {
-      setSavingMember(false)
-      setShowFamilyModal(false)
-      setNewMemberName('')
-    }
-  }
-
   return (
     <div className="flex-1 overflow-y-auto px-8 py-8">
       <div className="flex items-center justify-between mb-8">
@@ -152,46 +139,6 @@ export function Accounts({ accounts, familyMembers, onSave, onSaveFamilyMembers 
           <Plus size={15} />
           Add Account
         </button>
-      </div>
-
-      {/* Family Members Section */}
-      <div className="bg-[#14141f] border border-white/5 rounded-xl p-5 mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Users size={16} className="text-indigo-400" />
-            <h2 className="text-sm font-semibold text-white">Family Members</h2>
-          </div>
-          <button
-            onClick={() => setShowFamilyModal(true)}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 transition-colors"
-          >
-            <Plus size={13} />
-            Add
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(!familyMembers || familyMembers.length === 0) ? (
-            <p className="text-xs text-gray-600">No family members added yet</p>
-          ) : (
-            familyMembers.map((member, index) => {
-              const colorClass = FAMILY_MEMBER_COLORS[index % FAMILY_MEMBER_COLORS.length]
-              return (
-                <div key={member} className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border ${colorClass}`}>
-                  <span>{member}</span>
-                  <button
-                    onClick={() => {
-                      const updated = familyMembers.filter((m) => m !== member)
-                      onSaveFamilyMembers(updated)
-                    }}
-                    className="ml-1 hover:opacity-80 transition-opacity"
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-              )
-            })
-          )}
-        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-6">
@@ -298,8 +245,8 @@ export function Accounts({ accounts, familyMembers, onSave, onSaveFamilyMembers 
               >
                 <option value="">Select family member...</option>
                 {familyMembers?.map((member) => (
-                  <option key={member} value={member}>
-                    {member}
+                  <option key={member.name} value={member.name}>
+                    {member.name}
                   </option>
                 ))}
               </select>
@@ -347,42 +294,6 @@ export function Accounts({ accounts, familyMembers, onSave, onSaveFamilyMembers 
         </Modal>
       )}
 
-      {showFamilyModal && (
-        <Modal
-          title="Add Family Member"
-          onClose={() => setShowFamilyModal(false)}
-        >
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">Name</label>
-              <input
-                autoFocus
-                type="text"
-                value={newMemberName}
-                onChange={(e) => setNewMemberName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddFamilyMember()}
-                placeholder="e.g. John"
-                className="w-full bg-[#1c1c2a] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
-              />
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => setShowFamilyModal(false)}
-                className="flex-1 py-2 rounded-lg border border-white/10 text-sm text-gray-400 hover:text-gray-200 hover:border-white/20 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddFamilyMember}
-                disabled={!newMemberName.trim() || savingMember}
-                className="flex-1 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed text-sm text-white font-medium transition-colors"
-              >
-                {savingMember ? 'Saving…' : 'Add Member'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   )
 }
@@ -404,7 +315,7 @@ function AccountGroup({
   icon: React.ReactNode
   color: 'emerald' | 'red'
   accounts: Account[]
-  familyMembers: string[]
+  familyMembers: FamilyMember[]
   deleteConfirm: string | null
   onAdd: () => void
   onEdit: (a: Account) => void
@@ -467,7 +378,7 @@ function AccountGroup({
                     </span>
                   )}
                   {account.owner && (() => {
-                    const colorIndex = familyMembers.indexOf(account.owner) % FAMILY_MEMBER_COLORS.length
+                    const colorIndex = familyMembers.findIndex((m) => m.name === account.owner) % FAMILY_MEMBER_COLORS.length
                     return (
                       <span className={`shrink-0 flex items-center text-[10px] border rounded-full px-2.5 py-0.5 ${FAMILY_MEMBER_COLORS[colorIndex]}`}>
                         {account.owner}

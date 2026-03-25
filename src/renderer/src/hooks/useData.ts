@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { AppData, Account, MonthlySnapshot, RecurringExpense } from '../types'
+import { AppData, Account, MonthlySnapshot, RecurringExpense, IncomeSource, FamilyMember } from '../types'
 
 const defaultData: AppData = { accounts: [], snapshots: [], familyMembers: [] }
 const LS_KEY = 'networth-tracker-data'
@@ -9,7 +9,13 @@ const browserApi = {
   getData: async (): Promise<AppData> => {
     try {
       const raw = localStorage.getItem(LS_KEY)
-      return raw ? JSON.parse(raw) : defaultData
+      if (!raw) return defaultData
+      const parsed = JSON.parse(raw)
+      // Migration: convert old string[] familyMembers to FamilyMember[]
+      if (parsed.familyMembers && Array.isArray(parsed.familyMembers) && typeof parsed.familyMembers[0] === 'string') {
+        parsed.familyMembers = parsed.familyMembers.map((name: string) => ({ name, isChild: false }))
+      }
+      return parsed
     } catch {
       return defaultData
     }
@@ -63,7 +69,7 @@ export function useData() {
   )
 
   const saveFamilyMembers = useCallback(
-    async (familyMembers: string[]): Promise<void> => {
+    async (familyMembers: FamilyMember[]): Promise<void> => {
       const newData = { ...data, familyMembers }
       await saveAll(newData)
     },
@@ -78,5 +84,13 @@ export function useData() {
     [data, saveAll]
   )
 
-  return { data, loading, saveAccounts, saveSnapshots, saveFamilyMembers, saveExpenses }
+  const saveIncome = useCallback(
+    async (income: IncomeSource[]): Promise<void> => {
+      const newData = { ...data, income }
+      await saveAll(newData)
+    },
+    [data, saveAll]
+  )
+
+  return { data, loading, saveAccounts, saveSnapshots, saveFamilyMembers, saveExpenses, saveIncome }
 }

@@ -14,14 +14,14 @@ import {
   Tooltip,
   Cell
 } from 'recharts'
-import { RecurringExpense, ExpenseCategory } from '../types'
+import { RecurringExpense, ExpenseCategory, FamilyMember } from '../types'
 import { generateId, formatCurrency, cn } from '../utils'
 import { useCurrency } from '../context/CurrencyContext'
 import { Modal } from './Accounts'
 
 interface ExpensesProps {
   expenses: RecurringExpense[]
-  familyMembers: string[]
+  familyMembers: FamilyMember[]
   onSave: (expenses: RecurringExpense[]) => Promise<void>
 }
 
@@ -75,7 +75,7 @@ function calculateCategoryData(expenses: RecurringExpense[]) {
   })).sort((a, b) => b.amount - a.amount)
 }
 
-export function Expenses({ expenses, familyMembers, onSave }: ExpensesProps) {
+export function Expenses({ expenses, familyMembers: rawFamilyMembers, onSave }: ExpensesProps) {
   const { currency } = useCurrency()
   const fmt = (v: number) => formatCurrency(v, currency)
   const [showModal, setShowModal] = useState(false)
@@ -85,6 +85,14 @@ export function Expenses({ expenses, familyMembers, onSave }: ExpensesProps) {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [selectedOwner, setSelectedOwner] = useState<string | null>(null)
   const categoryRefs = useRef<Record<ExpenseCategory, HTMLDivElement | null>>({} as Record<ExpenseCategory, HTMLDivElement | null>)
+
+  // Ensure familyMembers is properly formatted
+  const familyMembers: FamilyMember[] = rawFamilyMembers.map((m: any) => {
+    if (typeof m === 'string') {
+      return { name: m, isChild: false }
+    }
+    return m as FamilyMember
+  })
 
   // Filter expenses by selected owner
   const filteredExpenses = selectedOwner
@@ -220,16 +228,16 @@ export function Expenses({ expenses, familyMembers, onSave }: ExpensesProps) {
           </button>
           {familyMembers.map((member) => (
             <button
-              key={member}
-              onClick={() => setSelectedOwner(member)}
+              key={member.name}
+              onClick={() => setSelectedOwner(member.name)}
               className={cn(
                 'px-3 py-1.5 rounded-full text-sm transition-colors',
-                selectedOwner === member
+                selectedOwner === member.name
                   ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
                   : 'bg-white/5 text-gray-400 border border-white/10 hover:border-white/20'
               )}
             >
-              {member}
+              {member.name}
             </button>
           ))}
         </div>
@@ -282,11 +290,13 @@ export function Expenses({ expenses, familyMembers, onSave }: ExpensesProps) {
                   borderRadius: '10px',
                   padding: '10px 14px'
                 }}
+                wrapperStyle={{ outline: 'none' }}
                 labelStyle={{ color: '#e5e7eb', fontWeight: 600, marginBottom: 4 }}
                 formatter={(v) => [fmt(v as number), 'Monthly Amount']}
+                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
               />
               <Bar dataKey="amount" fill="#f59e0b" radius={[6, 6, 0, 0]} onClick={handleBarClick}>
-                {categoryData.map((entry, idx) => (
+                {categoryData.map((_, idx) => (
                   <Cell
                     key={`cell-${idx}`}
                     fill={['#f59e0b', '#f97316', '#ef4444', '#ec4899', '#a855f7', '#6366f1', '#0ea5e9'][idx % 7]}
@@ -535,7 +545,7 @@ export function Expenses({ expenses, familyMembers, onSave }: ExpensesProps) {
                 >
                   <option value="">Everyone / shared</option>
                   {familyMembers.map((m) => (
-                    <option key={m} value={m}>{m}</option>
+                    <option key={m.name} value={m.name}>{m.name}</option>
                   ))}
                 </select>
               </div>

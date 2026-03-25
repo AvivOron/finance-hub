@@ -1,4 +1,4 @@
-import { LayoutDashboard, PlusCircle, Wallet, History, Settings as SettingsIcon, Receipt } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Wallet, History, Settings as SettingsIcon, Receipt, TrendingUp } from 'lucide-react'
 import { Page } from '../types'
 import { cn } from '../utils'
 import { useCurrency } from '../context/CurrencyContext'
@@ -16,7 +16,8 @@ const trackingItems: { id: Page; label: string; icon: React.ElementType }[] = [
 ]
 
 const expenseItems: { id: Page; label: string; icon: React.ElementType }[] = [
-  { id: 'expenses', label: 'Expenses', icon: Receipt }
+  { id: 'expenses', label: 'Expenses', icon: Receipt },
+  { id: 'income', label: 'Income', icon: TrendingUp }
 ]
 
 const settingItems: { id: Page; label: string; icon: React.ElementType }[] = [

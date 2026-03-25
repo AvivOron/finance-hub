@@ -25,19 +25,17 @@ export interface MonthlySnapshot {
   updatedAt: string
 }
 
-export interface DriveSync {
-  enabled: boolean
-  accessToken?: string // Google OAuth access token
-  fileId?: string // Google Drive file ID for storing data
-  lastSyncAt?: string // ISO timestamp of last successful sync
+export interface FamilyMember {
+  name: string
+  isChild?: boolean // if true, excluded from income filters
 }
 
 export interface AppData {
   accounts: Account[]
   snapshots: MonthlySnapshot[]
-  familyMembers?: string[] // list of family member names
-  driveSync?: DriveSync // Google Drive sync configuration
+  familyMembers?: FamilyMember[] // list of family members with metadata
   expenses?: RecurringExpense[]
+  income?: IncomeSource[]
 }
 
 export type ExpenseCategory = 'housing' | 'childcare' | 'subscriptions' | 'insurance' | 'utilities' | 'transport' | 'pets' | 'other'
@@ -53,4 +51,18 @@ export interface RecurringExpense {
   active: boolean
 }
 
-export type Page = 'dashboard' | 'snapshot' | 'accounts' | 'history' | 'expenses' | 'settings'
+export type IncomeType = 'salary'
+
+export interface IncomeSource {
+  id: string
+  name: string
+  type: IncomeType
+  grossAmount: number
+  netAmount: number
+  billingCycle: 'monthly' | 'yearly'
+  owner?: string // family member
+  notes?: string
+  active: boolean
+}
+
+export type Page = 'dashboard' | 'snapshot' | 'accounts' | 'history' | 'expenses' | 'income' | 'settings'

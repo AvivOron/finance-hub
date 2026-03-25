@@ -59,6 +59,8 @@ const tooltipStyle = {
 }
 
 const tooltipLabelStyle = { color: '#e5e7eb', fontWeight: 600, marginBottom: 4 }
+const tooltipWrapperStyle = { outline: 'none' }
+const tooltipCursor = { fill: 'rgba(255,255,255,0.05)' }
 
 export function Dashboard({ data, onNavigate }: DashboardProps) {
   const { currency } = useCurrency()
@@ -265,8 +267,10 @@ export function Dashboard({ data, onNavigate }: DashboardProps) {
                 />
                 <Tooltip
                   contentStyle={tooltipStyle}
+                  wrapperStyle={tooltipWrapperStyle}
                   labelStyle={tooltipLabelStyle}
                   formatter={(v) => [fmt(v as number), 'Net Worth']}
+                  cursor={tooltipCursor}
                 />
                 <Line
                   type="monotone"
@@ -311,7 +315,9 @@ export function Dashboard({ data, onNavigate }: DashboardProps) {
                 />
                 <Tooltip
                   contentStyle={tooltipStyle}
+                  wrapperStyle={tooltipWrapperStyle}
                   labelStyle={tooltipLabelStyle}
+                  cursor={tooltipCursor}
                   formatter={(v, name) => [
                     fmt(v as number),
                     name === 'assets' ? 'Assets' : 'Liabilities'

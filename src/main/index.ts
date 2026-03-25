@@ -2,20 +2,20 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import * as fs from 'fs'
-import * as http from 'http'
-import * as url from 'url'
 import 'dotenv/config'
 
 const DATA_FILE = join(app.getPath('userData'), 'networth-data.json')
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET
-const REDIRECT_URI = 'http://localhost:3000/oauth/callback'
 
 function readData(): object {
   try {
     if (fs.existsSync(DATA_FILE)) {
       const raw = fs.readFileSync(DATA_FILE, 'utf-8')
-      return JSON.parse(raw)
+      const parsed = JSON.parse(raw)
+      // Migration: convert old string[] familyMembers to FamilyMember[]
+      if (parsed.familyMembers && Array.isArray(parsed.familyMembers) && typeof parsed.familyMembers[0] === 'string') {
+        parsed.familyMembers = parsed.familyMembers.map((name: string) => ({ name, isChild: false }))
+      }
+      return parsed
     }
   } catch (e) {
     console.error('Failed to read data file:', e)
@@ -83,106 +83,6 @@ app.whenReady().then(() => {
   ipcMain.handle('shell:openExternal', (_event, externalUrl: string) => {
     shell.openExternal(externalUrl)
     return true
-  })
-
-  ipcMain.handle('authenticateWithGoogle', async () => {
-    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-      throw new Error('Google OAuth credentials not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env')
-    }
-
-    return new Promise<string>((resolve, reject) => {
-      // Start local server to handle OAuth callback
-      const server = http.createServer(async (req, res) => {
-        const parsedUrl = url.parse(req.url || '', true)
-        const pathname = parsedUrl.pathname
-        const query = parsedUrl.query
-
-        if (pathname === '/oauth/callback') {
-          try {
-            if (!query.code) {
-              throw new Error('No authorization code received')
-            }
-
-            // Exchange auth code for access token
-            const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: new URLSearchParams({
-                code: query.code as string,
-                client_id: GOOGLE_CLIENT_ID,
-                client_secret: GOOGLE_CLIENT_SECRET,
-                redirect_uri: REDIRECT_URI,
-                grant_type: 'authorization_code'
-              }).toString()
-            })
-
-            if (!tokenResponse.ok) {
-              throw new Error(`Token exchange failed: ${tokenResponse.statusText}`)
-            }
-
-            const tokenData = await tokenResponse.json()
-            console.log('Token response received:', { fields: Object.keys(tokenData) })
-            const accessToken = tokenData.access_token
-            if (!accessToken) {
-              console.error('No access_token in response:', tokenData)
-              throw new Error('No access token in OAuth response')
-            }
-            console.log('Access token obtained, length:', accessToken.length)
-
-            // Send success response
-            res.writeHead(200, { 'Content-Type': 'text/html' })
-            res.end(`
-              <html>
-                <head><title>Authorization Successful</title></head>
-                <body style="font-family: system-ui; padding: 40px; text-align: center;">
-                  <h1>✓ Authorization Successful</h1>
-                  <p>Your Google Drive is now connected. You can close this window.</p>
-                </body>
-              </html>
-            `)
-
-            server.close()
-            resolve(accessToken)
-          } catch (error) {
-            res.writeHead(400, { 'Content-Type': 'text/html' })
-            res.end(`
-              <html>
-                <head><title>Authorization Failed</title></head>
-                <body style="font-family: system-ui; padding: 40px; text-align: center;">
-                  <h1>✗ Authorization Failed</h1>
-                  <p>${error instanceof Error ? error.message : String(error)}</p>
-                </body>
-              </html>
-            `)
-
-            server.close()
-            reject(error)
-          }
-        } else {
-          res.writeHead(404)
-          res.end('Not found')
-        }
-      })
-
-      // Start server on port 3000
-      server.listen(3000, () => {
-        // Open browser with Google OAuth consent screen
-        const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth')
-        authUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID)
-        authUrl.searchParams.set('redirect_uri', REDIRECT_URI)
-        authUrl.searchParams.set('response_type', 'code')
-        authUrl.searchParams.set('scope', 'https://www.googleapis.com/auth/drive.file')
-        authUrl.searchParams.set('access_type', 'offline')
-
-        shell.openExternal(authUrl.toString())
-      })
-
-      // Timeout after 10 minutes
-      setTimeout(() => {
-        server.close()
-        reject(new Error('OAuth authentication timeout'))
-      }, 600000)
-    })
   })
 
   createWindow()
