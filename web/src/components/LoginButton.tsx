@@ -5,7 +5,7 @@ import { signIn } from 'next-auth/react'
 export function LoginButton() {
   return (
     <button
-      onClick={() => signIn('google', { callbackUrl: '/app' })}
+      onClick={() => signIn('google', { callbackUrl: '/finance-hub/app' })}
       className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-white hover:bg-gray-100 text-gray-900 text-sm font-semibold transition-colors shadow-lg"
     >
       {/* Google "G" logo */}
