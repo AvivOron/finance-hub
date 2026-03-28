@@ -154,7 +154,7 @@ export function SnapshotEntry({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-8 py-8">
+    <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
       <div className="max-w-2xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">
@@ -333,7 +333,7 @@ function AccountSection({
                       value={balances[account.id + ':' + sub] ?? ''}
                       onChange={(e) => onChange(account.id + ':' + sub, e.target.value)}
                       placeholder="0"
-                      className="w-40 bg-[#1c1c2a] border border-white/10 rounded-lg pl-7 pr-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors text-right"
+                      className="w-32 sm:w-40 bg-[#1c1c2a] border border-white/10 rounded-lg pl-7 pr-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors text-right"
                     />
                   </div>
                 </div>
@@ -384,7 +384,7 @@ function AccountSection({
                   value={balances[account.id] ?? ''}
                   onChange={(e) => onChange(account.id, e.target.value)}
                   placeholder="0"
-                  className="w-40 bg-[#1c1c2a] border border-white/10 rounded-lg pl-7 pr-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors text-right"
+                  className="w-32 sm:w-40 bg-[#1c1c2a] border border-white/10 rounded-lg pl-7 pr-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors text-right"
                 />
               </div>
             </div>

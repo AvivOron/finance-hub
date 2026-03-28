@@ -89,7 +89,7 @@ export function Dashboard({ data, onNavigate }: DashboardProps) {
   const hasData = stats.length > 0
 
   return (
-    <div className="flex-1 overflow-y-auto px-8 py-8 space-y-8">
+    <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8 space-y-6 md:space-y-8">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard</h1>
@@ -188,7 +188,7 @@ export function Dashboard({ data, onNavigate }: DashboardProps) {
       </div>
 
       {/* Summary Cards */}
-      <div className={`grid gap-4 ${currentLiabilities > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+      <div className={`grid gap-3 grid-cols-2 ${currentLiabilities > 0 ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
         {currentLiabilities > 0 && (
           <SummaryCard
             label="Net Worth"
@@ -369,12 +369,12 @@ function SummaryCard({
     gray: 'text-gray-400 bg-gray-500/10'
   }
   return (
-    <div className="bg-[#14141f] border border-white/5 rounded-xl p-5 space-y-3">
+    <div className="bg-[#14141f] border border-white/5 rounded-xl p-4 md:p-5 space-y-2 md:space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</span>
         <span className={`p-1.5 rounded-md ${accentMap[accent]}`}>{icon}</span>
       </div>
-      <div className="text-2xl font-bold text-white tracking-tight">{value}</div>
+      <div className="text-xl md:text-2xl font-bold text-white tracking-tight">{value}</div>
       {sub && <div className="text-xs flex items-center gap-1">{sub}</div>}
     </div>
   )

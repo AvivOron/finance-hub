@@ -57,7 +57,7 @@ export function History({ data, onSave, onEditSnapshot }: HistoryProps) {
   })
 
   return (
-    <div className="flex-1 overflow-y-auto px-8 py-8">
+    <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white tracking-tight">History</h1>
         <p className="text-sm text-gray-500 mt-0.5">
@@ -65,8 +65,8 @@ export function History({ data, onSave, onEditSnapshot }: HistoryProps) {
         </p>
       </div>
 
-      <div className="bg-[#14141f] border border-white/5 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-[#14141f] border border-white/5 rounded-xl overflow-x-auto">
+        <table className="w-full text-sm min-w-[560px]">
           <thead>
             <tr className="border-b border-white/5">
               <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -117,7 +117,7 @@ export function History({ data, onSave, onEditSnapshot }: HistoryProps) {
                   )}
                 </td>
                 <td className="px-5 py-4">
-                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                     {deleteConfirm === snapshot.id ? (
                       <div className="flex items-center gap-1">
                         <span className="text-xs text-gray-500 mr-1">Delete?</span>

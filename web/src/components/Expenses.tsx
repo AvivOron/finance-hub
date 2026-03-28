@@ -195,8 +195,8 @@ export function Expenses({ expenses, familyMembers: rawFamilyMembers, onSave }: 
   const isFormValid = form.name.trim() && parseFloat(form.amount) > 0
 
   return (
-    <div className="px-8 py-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="px-4 py-6 md:px-8 md:py-8">
+      <div className="flex items-center justify-between mb-6 md:mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Recurring Expenses</h1>
           <p className="text-sm text-gray-500 mt-0.5">Track your fixed monthly costs</p>
@@ -241,7 +241,7 @@ export function Expenses({ expenses, familyMembers: rawFamilyMembers, onSave }: 
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 md:mb-8">
         <SummaryCard
           label="Total monthly"
           value={formatCurrency(totalMonthly, currency)}
@@ -425,7 +425,7 @@ export function Expenses({ expenses, familyMembers: rawFamilyMembers, onSave }: 
                             )}
                           </div>
 
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                             {deleteConfirm === expense.id ? (
                               <div className="flex items-center gap-1">
                                 <span className="text-xs text-gray-500 mr-1">Delete?</span>
