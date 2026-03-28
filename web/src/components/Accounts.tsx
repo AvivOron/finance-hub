@@ -144,8 +144,8 @@ export function Accounts({ accounts, familyMembers: rawFamilyMembers, onSave }: 
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-8 py-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
+      <div className="flex items-center justify-between mb-6 md:mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Accounts</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage your asset and liability categories</p>
@@ -159,7 +159,7 @@ export function Accounts({ accounts, familyMembers: rawFamilyMembers, onSave }: 
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <AccountGroup
           title="Assets"
           icon={<TrendingUp size={15} className="text-emerald-400" />}
@@ -413,7 +413,7 @@ function AccountGroup({
                   <p className="text-xs text-gray-600 truncate mt-1">{account.notes}</p>
                 )}
               </div>
-              <div className="flex items-center gap-1 ml-3 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1 ml-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 {deleteConfirm === account.id ? (
                   <div className="flex items-center gap-1">
                     <span className="text-xs text-gray-500 mr-1">Delete?</span>
