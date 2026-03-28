@@ -82,4 +82,5 @@ export type Page =
   | 'history'
   | 'expenses'
   | 'income'
+  | 'insights'
   | 'settings'

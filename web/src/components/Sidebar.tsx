@@ -10,6 +10,7 @@ import {
   Settings as SettingsIcon,
   Receipt,
   TrendingUp,
+  Sparkles,
   LogOut
 } from 'lucide-react'
 import { Page } from '../types'
@@ -36,7 +37,8 @@ const trackingItems: { id: Page; label: string; icon: React.ElementType }[] = [
 
 const expenseItems: { id: Page; label: string; icon: React.ElementType }[] = [
   { id: 'expenses', label: 'Expenses', icon: Receipt },
-  { id: 'income', label: 'Income', icon: TrendingUp }
+  { id: 'income', label: 'Income', icon: TrendingUp },
+  { id: 'insights', label: 'AI Insights', icon: Sparkles }
 ]
 
 const settingItems: { id: Page; label: string; icon: React.ElementType }[] = [

@@ -9,6 +9,7 @@ import { History } from '@/components/History'
 import { Settings } from '@/components/Settings'
 import { Expenses } from '@/components/Expenses'
 import { Income } from '@/components/Income'
+import { Insights } from '@/components/Insights'
 import { useData } from '@/hooks/useData'
 import { Page } from '@/types'
 
@@ -129,6 +130,9 @@ export function AppClient({ user }: AppClientProps) {
               familyMembers={data.familyMembers || []}
               onSave={saveIncome}
             />
+          )}
+          {page === 'insights' && (
+            <Insights data={data} />
           )}
           {page === 'settings' && (
             <Settings data={data} onSaveFamilyMembers={saveFamilyMembers} />
