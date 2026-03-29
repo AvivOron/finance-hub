@@ -46,10 +46,13 @@ export async function GET(request: Request) {
       maxAge: 24 * 60 * 60
     })
 
-    // Redirect to app with absolute URL from request
-    const url = new URL(request.url)
-    url.pathname = '/finance-hub/app'
-    const response = NextResponse.redirect(url)
+    // Redirect to app - return location header without establishing absolute URL
+    const response = new NextResponse(null, {
+      status: 302,
+      headers: {
+        'Location': '/finance-hub/app'
+      }
+    })
 
     response.cookies.set('next-auth.session-token', token, {
       httpOnly: true,
