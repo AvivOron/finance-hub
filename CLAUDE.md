@@ -1,70 +1,38 @@
 # CLAUDE.md — Finance Hub
 
-## Project overview
-
-Electron + React + TypeScript desktop app for comprehensive financial tracking—net worth, accounts, and recurring expenses. Uses `electron-vite` as the build tool, Tailwind CSS for styling, and Recharts for charts. All data is stored locally as JSON.
+**Electron + React + TS**, local JSON storage, net worth/accounts/expenses tracking.
 
 ## Commands
-
 ```bash
-npm run dev        # Start Electron app with hot-reload (opens native window)
-npm run build      # Production build → out/
-npm run preview    # Preview the production build
-npm run typecheck  # Type-check main + renderer without building
-npm run pack       # Build + package as unpacked .app (fast, no DMG)
-npm run dist       # Build + package as .dmg installer → dist/
+npm run dev        # Hot-reload
+npm run build      # Production → out/
+npm run typecheck  # Type-check
+npm run pack       # Build .app
+npm run dist       # Build .dmg
 ```
 
 ## Architecture
+- **Main** (`src/main`) — IPC `getData`/`saveData`, file I/O
+- **Preload** (`src/preload`) — exposes `window.api`
+- **Renderer** (`src/renderer/src`) — React SPA, state router, `CurrencyProvider` root
 
-### Process model
-- **Main process** (`src/main/index.ts`) — creates the BrowserWindow, registers IPC handlers `getData` / `saveData`, reads/writes `networth-data.json` via Node `fs`
-- **Preload** (`src/preload/index.ts`) — exposes `window.api.getData()` and `window.api.saveData()` via `contextBridge`
-- **Renderer** (`src/renderer/src/`) — React SPA; communicates with main via `window.api`
+## Components
+- `App.tsx` — router, context wrapper
+- `Sidebar.tsx` → nav + ₪/$ toggle
+- `Dashboard.tsx` → charts/cards
+- `Accounts.tsx` → CRUD
+- `SnapshotEntry.tsx`, `History.tsx`, `Expenses.tsx`
+- `useData.ts` → AppData loader, localStorage fallback
 
-### Renderer layout
-```
-App.tsx             state-based router (no react-router); wraps tree in CurrencyProvider
-  Sidebar.tsx       left nav with sections (Tracking, Management, Settings) + ₪/$ currency toggle in footer
-  Dashboard.tsx     net worth charts + summary cards + family member/account filtering
-  Accounts.tsx      CRUD for account categories, family member management
-  SnapshotEntry.tsx monthly balance entry form with sub-balances and timestamps
-  History.tsx       table of past snapshots with edit/delete
-  Expenses.tsx      recurring expenses tracker with CRUD + expense dashboard (summary cards + category chart)
-  Settings.tsx      data export to JSON
-context/
-  CurrencyContext.tsx  React context: Currency ('NIS'|'USD'), default NIS, persisted to localStorage
-```
-
-### Data hook
-`hooks/useData.ts` loads `AppData` on mount and exposes `saveAccounts` / `saveSnapshots`. Falls back to `localStorage` when `window.api` is unavailable (browser preview / tests).
-
-### Key types (`src/renderer/src/types/index.ts`)
-```ts
-Account           { id, name, type: 'asset'|'liability', kind?, owner?, notes? }
-AccountKind       'bank' | 'brokerage' | 'child' | 'custom'
-SnapshotEntry     { accountId, balance, subBalances?, lastUpdatedAt? }
-MonthlySnapshot   { id, date (YYYY-MM), entries[], createdAt, updatedAt }
-RecurringExpense  { id, name, amount, category, billingCycle, owner?, notes?, active }
-ExpenseCategory   'housing' | 'childcare' | 'subscriptions' | 'insurance' | 'utilities' | 'transport' | 'pets' | 'other'
-AppData           { accounts: Account[], snapshots: MonthlySnapshot[], familyMembers?, expenses? }
-```
+## Types (`src/renderer/src/types/index.ts`)
+- `Account`: id, name, type ('asset'|'liability'), kind?, owner?
+- `MonthlySnapshot`: id, date (YYYY-MM), entries[]
+- `RecurringExpense`: id, name, amount, category, billingCycle
+- `ExpenseCategory`: housing, childcare, subscriptions, insurance, utilities, transport, pets, other
 
 ## Conventions
-
-- Currency is NIS (₪) by default, switchable to USD ($); use `formatCurrency(value, currency)` / `formatCurrencyShort(value, currency)` from `utils/index.ts`; consume `useCurrency()` from `CurrencyContext` to get the active currency
-- Dates are stored as `YYYY-MM` strings; use `formatMonthLabel` / `formatMonthFull` for display
-- IDs are generated with `generateId()` (base36 timestamp + random suffix)
-- Dark theme only — background `#09090f`, cards `#14141f`, accent `indigo-500`
-- Tailwind class merging via `cn()` helper in `utils/index.ts`
-
-## Data file location
-
-`app.getPath('userData')/networth-data.json`
-- macOS: `~/Library/Application Support/networth-tracker/networth-data.json`
-
-## Build config
-
-`electron.vite.config.ts` — three separate Vite builds (main, preload, renderer). The renderer uses `@renderer` as a path alias for `src/renderer/src/`.
-
-`src/renderer/vite.config.ts` — standalone Vite config for the renderer, used when running a browser preview (e.g. VS Code launch.json dev server). Adds `@vitejs/plugin-react` so JSX works without React in scope.
+- **Currency**: NIS (₪) → `formatCurrency()` + `useCurrency()`
+- **Dates**: YYYY-MM → `formatMonthLabel()`
+- **IDs**: `generateId()`
+- **Style**: dark (#09090f, #14141f cards, indigo-500), `cn()` merge
+- **File**: `~/.networth-data.json`
