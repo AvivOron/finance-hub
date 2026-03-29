@@ -57,6 +57,13 @@ export async function POST(request: Request) {
     )
   }
 
+  // Ensure User record exists before creating the foreign-key reference
+  await prisma.user.upsert({
+    where: { id: userId },
+    update: {},
+    create: { id: userId, email: session.user.email ?? undefined, name: session.user.name ?? undefined }
+  })
+
   await prisma.householdMember.create({
     data: { householdId: household.id, userId }
   })
