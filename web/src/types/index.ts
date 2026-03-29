@@ -36,6 +36,11 @@ export interface AppData {
   familyMembers?: FamilyMember[]
   expenses?: RecurringExpense[]
   income?: IncomeSource[]
+  aiInsights?: {
+    content: string
+    language: 'en' | 'he'
+    generatedAt: string
+  }
 }
 
 export type ExpenseCategory =

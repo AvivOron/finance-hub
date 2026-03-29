@@ -32,7 +32,8 @@ export function AppClient({ user }: AppClientProps) {
     saveSnapshots,
     saveFamilyMembers,
     saveExpenses,
-    saveIncome
+    saveIncome,
+    saveAiInsights
   } = useData()
   const { lang } = useLanguage()
 
@@ -135,7 +136,7 @@ export function AppClient({ user }: AppClientProps) {
             />
           )}
           {page === 'insights' && (
-            <Insights data={data} />
+            <Insights data={data} user={user} onSaveInsights={saveAiInsights} />
           )}
           {page === 'settings' && (
             <Settings data={data} onSaveFamilyMembers={saveFamilyMembers} />

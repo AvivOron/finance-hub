@@ -6,9 +6,17 @@ import { prisma } from './prisma'
  * - If the user is a member of someone else's household → the owner's id
  */
 export async function getEffectiveUserId(userId: string): Promise<string> {
-  const membership = await prisma.householdMember.findUnique({
-    where: { userId },
-    select: { household: { select: { ownerId: true } } }
-  })
-  return membership?.household.ownerId ?? userId
+  try {
+    const membership = await prisma.householdMember.findUnique({
+      where: { userId },
+      select: { household: { select: { ownerId: true } } }
+    })
+    return membership?.household.ownerId ?? userId
+  } catch (error: any) {
+    // If household tables don't exist yet (during initial setup), just use the user's own id
+    if (error?.code === 'P2021' || error?.code === 'P2022') {
+      return userId
+    }
+    throw error
+  }
 }

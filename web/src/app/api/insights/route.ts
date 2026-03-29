@@ -149,24 +149,51 @@ export async function POST(request: Request) {
 
   const prompt = buildPrompt(data, currency, language)
 
-  const stream = await client.messages.stream({ 
+  const stream = await client.messages.stream({
     model: 'claude-opus-4-6',
     max_tokens: 1500,
     messages: [{ role: 'user', content: prompt }]
   })
 
   const encoder = new TextEncoder()
+  let fullContent = ''
+
   const readable = new ReadableStream({
     async start(controller) {
-      for await (const chunk of stream) {
-        if (
-          chunk.type === 'content_block_delta' &&
-          chunk.delta.type === 'text_delta'
-        ) {
-          controller.enqueue(encoder.encode(chunk.delta.text))
+      try {
+        for await (const chunk of stream) {
+          if (
+            chunk.type === 'content_block_delta' &&
+            chunk.delta.type === 'text_delta'
+          ) {
+            fullContent += chunk.delta.text
+            controller.enqueue(encoder.encode(chunk.delta.text))
+          }
         }
+
+        // Persist insights after streaming completes (optional - will fail gracefully if column doesn't exist)
+        try {
+          await (prisma.userData.update as any)({
+            where: { userId: effectiveUserId },
+            data: {
+              aiInsights: {
+                content: fullContent,
+                language,
+                generatedAt: new Date().toISOString()
+              }
+            }
+          })
+        } catch (persistError: any) {
+          // P2022 = column doesn't exist (migration not applied yet)
+          if (persistError?.code !== 'P2022') {
+            console.error('Failed to persist insights:', persistError)
+          }
+        }
+
+        controller.close()
+      } catch (error) {
+        controller.error(error)
       }
-      controller.close()
     }
   })
 

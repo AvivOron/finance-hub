@@ -62,5 +62,17 @@ export function useData() {
     [data, saveAll]
   )
 
-  return { data, loading, saveAccounts, saveSnapshots, saveFamilyMembers, saveExpenses, saveIncome }
+  const saveAiInsights = useCallback(
+    async (insights: { content: string; language: string; generatedAt: string }): Promise<void> => {
+      const res = await fetch('/finance-hub/api/save-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(insights)
+      })
+      if (!res.ok) throw new Error('Failed to save insights')
+    },
+    []
+  )
+
+  return { data, loading, saveAccounts, saveSnapshots, saveFamilyMembers, saveExpenses, saveIncome, saveAiInsights }
 }

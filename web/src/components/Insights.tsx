@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { Sparkles, RefreshCw, AlertCircle } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Sparkles, RefreshCw, AlertCircle, Globe } from 'lucide-react'
 import { AppData } from '../types'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -10,6 +10,8 @@ import { cn } from '../utils'
 
 interface InsightsProps {
   data: AppData
+  user?: { isDemo?: boolean }
+  onSaveInsights?: (insights: { content: string; language: string; generatedAt: string }) => Promise<void>
 }
 
 // Minimal markdown renderer: handles ## headers, **bold**, and - bullet lists
@@ -76,16 +78,41 @@ function renderInline(text: string): React.ReactNode {
   })
 }
 
-export function Insights({ data }: InsightsProps) {
+export function Insights({ data, user, onSaveInsights }: InsightsProps) {
   const { currency } = useCurrency()
   const { lang } = useLanguage()
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [generated, setGenerated] = useState(false)
+  const [translating, setTranslating] = useState(false)
+  const [insightsLanguage, setInsightsLanguage] = useState<'en' | 'he' | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   const hasData = data.snapshots.length > 0 || data.accounts.length > 0
+  const isDemo = user?.isDemo ?? false
+  const needsTranslation = generated && insightsLanguage && insightsLanguage !== lang
+
+  // Load persisted insights on mount
+  useEffect(() => {
+    const aiInsights = (data as any).aiInsights
+    if (aiInsights && aiInsights.content) {
+      setInsightsLanguage(aiInsights.language || 'en')
+      // Stream the content for animation effect
+      streamContent(aiInsights.content)
+      setGenerated(true)
+    }
+  }, [])
+
+  async function streamContent(fullContent: string) {
+    setContent('')
+    // Stream persisted content character by character for animation
+    const chunkSize = 8
+    for (let i = 0; i < fullContent.length; i += chunkSize) {
+      await new Promise(resolve => setTimeout(resolve, 10))
+      setContent(fullContent.slice(0, i + chunkSize))
+    }
+  }
 
   async function generate() {
     if (abortRef.current) abortRef.current.abort()
@@ -95,6 +122,7 @@ export function Insights({ data }: InsightsProps) {
     setLoading(true)
     setError(null)
     setContent('')
+    setInsightsLanguage(null)
 
     try {
       const res = await fetch('/finance-hub/api/insights', {
@@ -121,6 +149,16 @@ export function Insights({ data }: InsightsProps) {
       }
 
       setGenerated(true)
+      setInsightsLanguage(lang as 'en' | 'he')
+
+      // Persist insights to database
+      if (onSaveInsights) {
+        await onSaveInsights({
+          content: accumulated,
+          language: lang,
+          generatedAt: new Date().toISOString()
+        })
+      }
     } catch (err: any) {
       if (err.name === 'AbortError') return
       setError(err.message ?? t('insights.error', lang))
@@ -129,9 +167,50 @@ export function Insights({ data }: InsightsProps) {
     }
   }
 
+  async function translateInsights() {
+    if (!content || !insightsLanguage || insightsLanguage === lang) return
+
+    setTranslating(true)
+    setError(null)
+
+    try {
+      const res = await fetch('/finance-hub/api/translate-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content,
+          fromLanguage: insightsLanguage,
+          toLanguage: lang
+        })
+      })
+
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || `Error ${res.status}`)
+      }
+
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        accumulated += decoder.decode(value, { stream: true })
+        setContent(accumulated)
+      }
+
+      setInsightsLanguage(lang as 'en' | 'he')
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to translate insights')
+    } finally {
+      setTranslating(false)
+    }
+  }
+
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -140,15 +219,26 @@ export function Insights({ data }: InsightsProps) {
               {t('insights.subtitle', lang)}
             </p>
           </div>
-          {generated && !loading && (
-            <button
-              onClick={generate}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-gray-400 hover:text-gray-200 transition-colors shrink-0"
-            >
-              <RefreshCw size={14} />
-              {t('insights.refresh', lang)}
-            </button>
-          )}
+          <div className="flex gap-2 shrink-0">
+            {needsTranslation && !translating && (
+              <button
+                onClick={translateInsights}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                title="Translate to current language"
+              >
+                <Globe size={14} />
+              </button>
+            )}
+            {generated && !loading && !isDemo && (
+              <button
+                onClick={generate}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+              >
+                <RefreshCw size={14} />
+                {t('insights.refresh', lang)}
+              </button>
+            )}
+          </div>
         </div>
 
         {!hasData ? (
@@ -179,16 +269,18 @@ export function Insights({ data }: InsightsProps) {
             </button>
           </div>
         ) : (
-          <div className="bg-[#14141f] border border-white/5 rounded-xl p-5 md:p-6">
-            {loading && content === '' ? (
+          <div className="bg-[#14141f] border border-white/5 rounded-xl p-5 md:p-6 overflow-hidden">
+            {(loading && content === '') || (translating && !content) ? (
               <div className="flex items-center gap-3 text-gray-500 py-4">
                 <div className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin shrink-0" />
-                <span className="text-sm">{t('insights.loading', lang)}</span>
+                <span className="text-sm">
+                  {translating ? 'Translating…' : t('insights.loading', lang)}
+                </span>
               </div>
             ) : (
-              <div>
+              <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
                 {renderMarkdown(content)}
-                {loading && (
+                {(loading || translating) && (
                   <span className="inline-block w-1.5 h-4 bg-indigo-400 ml-0.5 animate-pulse rounded-sm" />
                 )}
               </div>
