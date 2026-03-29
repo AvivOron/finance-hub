@@ -5,5 +5,5 @@ const authMiddleware = withAuth({ pages: { signIn: '/' } })
 export default authMiddleware
 
 export const config = {
-  matcher: ['/app/:path*', '/api/data/:path*']
+  matcher: ['/finance-hub/app/:path*', '/finance-hub/api/data/:path*']
 }
