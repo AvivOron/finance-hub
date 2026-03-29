@@ -151,7 +151,7 @@ export async function POST(request: Request) {
 
   const stream = await client.messages.stream({
     model: 'claude-opus-4-6',
-    max_tokens: 1500,
+    max_tokens: 4096,
     messages: [{ role: 'user', content: prompt }]
   })
 
