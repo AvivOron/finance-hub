@@ -8,8 +8,7 @@ export function LoginButton({ callbackUrl = '/finance-hub/app' }: { callbackUrl?
     e.preventDefault()
     console.log('Tour button clicked!')
     // Use /api/tour only on avivo.dev (has rewrite), otherwise use /finance-hub/api/tour
-    const isAvivoDomain = window.location.hostname.includes('avivo.dev')
-    const url = isAvivoDomain ? '/api/tour' : '/finance-hub/api/tour'
+    const url = false ? '/api/tour' : '/finance-hub/api/tour'
     window.location.href = url
   }
 
