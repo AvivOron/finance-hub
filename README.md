@@ -18,6 +18,26 @@ Built with Electron + React + TypeScript.
 - **Expense Dashboard** — Summary cards showing total monthly and yearly expenses; bar chart breakdown by category
 - **Flexible Assignment** — Assign expenses to family members for household budget tracking
 
+<img width="2882" height="1576" alt="image" src="https://github.com/user-attachments/assets/de84c237-8afd-4380-9cf8-0d92b872c11a" />
+
+<img width="2914" height="1568" alt="image" src="https://github.com/user-attachments/assets/e487915f-3845-4304-9957-b996ce6d005d" />
+
+<img width="2918" height="1576" alt="image" src="https://github.com/user-attachments/assets/cf38b04b-b92e-4fc5-913b-dad4e579f269" />
+
+<img width="2908" height="1564" alt="image" src="https://github.com/user-attachments/assets/4a86bcf0-6458-427e-a19a-75cc0be35648" />
+
+<img width="2918" height="1568" alt="image" src="https://github.com/user-attachments/assets/4ee8a01b-2dff-49cc-8ca5-98cd0f3f9cc6" />
+
+<img width="2908" height="1556" alt="image" src="https://github.com/user-attachments/assets/9985fdbc-fa55-4ce8-9358-d449dac2bb17" />
+
+<img width="2906" height="1568" alt="image" src="https://github.com/user-attachments/assets/56cdbcae-edd6-49a0-8e04-270229e4c6f0" />
+
+
+
+
+
+
+
 **General**
 - **Currency switching** — Toggle between NIS (₪, default) and USD ($) from the sidebar; persisted across restarts
 - **Data backup** — Export your data as JSON with one click; save to Dropbox, email, or Google Drive manually
