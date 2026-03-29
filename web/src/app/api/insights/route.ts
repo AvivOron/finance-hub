@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getEffectiveUserId } from '@/lib/household'
 import Anthropic from '@anthropic-ai/sdk'
 import { AppData, MonthlySnapshot } from '@/types'
 
@@ -128,7 +129,7 @@ Give 3–5 specific, prioritized action items the user should take. Be direct an
 }
 
 function isAppData(data: any): data is AppData {
-  return Array.isArray(data.accounts) && Array.isArray(data.snapshots) && Array.isArray(data.familyMembers);
+  return data && Array.isArray(data.accounts) && Array.isArray(data.snapshots) && Array.isArray(data.familyMembers);
 }
 
 export async function POST(request: Request) {
@@ -139,8 +140,9 @@ export async function POST(request: Request) {
 
   const { currency = 'NIS', language = 'en' } = await request.json()
 
+  const effectiveUserId = await getEffectiveUserId(session.user.id)
   const userData = await prisma.userData.findUnique({
-    where: { userId: session.user.id }
+    where: { userId: effectiveUserId }
   })
 
   const data = isAppData(userData?.data) ? userData.data : { accounts: [], snapshots: [], familyMembers: [] };
