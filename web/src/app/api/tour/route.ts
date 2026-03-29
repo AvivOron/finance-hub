@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { generateMockData } from '@/lib/tour-data'
 import { DEMO_USER_EMAIL } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     console.log('[Tour API] GET request received')
 
@@ -47,7 +47,8 @@ export async function GET() {
     })
 
     // Redirect to app with session cookie
-    const response = NextResponse.redirect(new URL('/finance-hub/app', 'https://finance-hub-umber.vercel.app'))
+    const baseUrl = new URL(request.url).origin
+    const response = NextResponse.redirect(new URL('/finance-hub/app', baseUrl))
 
     response.cookies.set('next-auth.session-token', token, {
       httpOnly: true,
