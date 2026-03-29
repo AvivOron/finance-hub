@@ -42,7 +42,7 @@ function buildPrompt(data: AppData, currency: string, language: string = 'en'): 
       const subInfo = e.subBalances
         ? Object.entries(e.subBalances).map(([k, v]) => `${k}=${currencySymbol}${v.toLocaleString()}`).join(', ')
         : ''
-      return `  - ${account.name} (${account.type}): ${currencySymbol}${e.balance.toLocaleString()}${subInfo ? ` [${subInfo}]` : ''}`
+      return `  - ${account.name} (${account.type}): ${currencySymbol}${e.balance.toLocaleString()}${subInfo ? ` [${subInfo}]` : ''}${account.kind === 'bank' && e.subBalances?.investments ? ' (note: investments sub-balance is already invested in stocks/securities, not idle cash)' : ''}`
     }).filter(Boolean).join('\n')
   }
 
@@ -119,13 +119,13 @@ Analyze the trend. Is it growing? At what pace? Any concerns?
 Evaluate income vs expenses. Is the savings rate healthy? What's notable?
 
 ## Asset Allocation
-Analyze the mix of account types (bank, brokerage, etc.). Is it well-diversified?
+Analyze the mix of account types (bank, brokerage, etc.). Is it well-diversified? Note: for bank accounts, the "investments" sub-balance represents money already invested in stocks/securities — do NOT recommend moving it to investments. Only the "checking" and "savings" sub-balances are liquid cash.
 
 ## Debt & Liabilities
 Comment on liabilities. Debt-to-asset ratio, any red flags?
 
 ## Top Recommendations
-Give 3–5 specific, prioritized action items the user should take. Be direct and concrete.`
+Give 3–5 specific, prioritized action items the user should take. Be direct and concrete. Remember: bank "investments" sub-balances are already in stocks — do not recommend investing money that is already invested.`
 }
 
 function isAppData(data: any): data is AppData {

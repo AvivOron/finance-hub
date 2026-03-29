@@ -34,7 +34,7 @@ export const ACCOUNT_KIND_CONFIG: Record<
   bank: {
     label: 'Bank Account',
     icon: <Landmark size={13} />,
-    subLabels: ['checking', 'savings']
+    subLabels: ['checking', 'savings', 'investments']
   },
   brokerage: {
     label: 'Brokerage Account',
@@ -51,7 +51,7 @@ export const ACCOUNT_KIND_CONFIG: Record<
 }
 
 const ACCOUNT_KINDS: { value: AccountKind; label: string; description: string }[] = [
-  { value: 'bank', label: 'Bank Account', description: 'Checking + Savings balances' },
+  { value: 'bank', label: 'Bank Account', description: 'Checking, Savings & Investments' },
   { value: 'brokerage', label: 'Brokerage Account', description: 'Single balance' },
   { value: 'child', label: 'Child Savings', description: 'Single balance' },
   { value: 'piggyBank', label: 'Savings Fund', description: 'Single balance' },
