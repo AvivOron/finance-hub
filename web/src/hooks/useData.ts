@@ -8,7 +8,7 @@ export function useData() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/data')
+    fetch('/finance-hub/api/data')
       .then((r) => r.json())
       .then((d) => {
         setData(d && d.accounts ? d : defaultData)
@@ -19,7 +19,7 @@ export function useData() {
 
   const saveAll = useCallback(async (newData: AppData): Promise<void> => {
     setData(newData)
-    const res = await fetch('/api/data', {
+    const res = await fetch('/finance-hub/api/data', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newData)
