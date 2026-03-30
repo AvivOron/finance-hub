@@ -117,7 +117,6 @@ export function AppClient({ user }: AppClientProps) {
         <OnboardingModal
           onComplete={handleOnboardingComplete}
           onDismissPermanently={handleOnboardingDismissPermanently}
-          onNavigate={handleNavigate}
           initialFamilyMembers={data.familyMembers}
           onSaveFamilyMembers={saveFamilyMembers}
         />

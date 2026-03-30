@@ -15,7 +15,7 @@ import {
   ChevronLeft,
 } from 'lucide-react'
 import { cn } from '../utils'
-import { FamilyMember, Page } from '@/types'
+import { FamilyMember } from '@/types'
 import { useLanguage } from '../context/LanguageContext'
 
 type Lang = 'en' | 'he'
@@ -42,21 +42,18 @@ const s = {
   accountsBullet1:    { en: 'Assets include bank accounts, brokerage portfolios, savings, and property.', he: 'נכסים כוללים חשבונות בנק, תיקי תיווך, חסכונות ונדל"ן.' },
   accountsBullet2:    { en: 'Liabilities include mortgages, loans, and credit card balances.', he: 'התחייבויות כוללות משכנתאות, הלוואות ויתרות כרטיסי אשראי.' },
   accountsBullet3:    { en: 'Head to the Accounts page to add your first account — it only takes a minute.', he: 'עבור לדף החשבונות כדי להוסיף את החשבון הראשון שלך — זה לוקח רק דקה.' },
-  accountsAction:     { en: 'Go to Accounts', he: 'עבור לחשבונות' },
   // Snapshot guide
   snapshotTitle:      { en: 'Record your first snapshot', he: 'הוסף את התיעוד הראשון שלך' },
   snapshotDesc:       { en: "A monthly snapshot is a point-in-time record of all your account balances. It's how Finance Hub tracks your net worth over time.", he: 'תיעוד חודשי הוא רשומה נקודתית של כל יתרות החשבון שלך. כך Finance Hub עוקב אחרי שווי הנטו שלך לאורך זמן.' },
   snapshotBullet1:    { en: 'Each month, open the Snapshot page and enter your current balances.', he: 'בכל חודש, פתח את דף התיעוד והזן את היתרות הנוכחיות שלך.' },
   snapshotBullet2:    { en: 'Finance Hub will calculate your total assets, liabilities, and net worth automatically.', he: 'Finance Hub יחשב אוטומטית את סך הנכסים, ההתחייבויות ושווי הנטו.' },
   snapshotBullet3:    { en: "Over time you'll build a clear picture of your financial progress.", he: 'לאורך זמן תבנה תמונה ברורה של ההתקדמות הפיננסית שלך.' },
-  snapshotAction:     { en: 'Go to Snapshot', he: 'עבור לתיעוד' },
   // Expenses guide
   expensesTitle:      { en: 'Track your money flow', he: 'עקוב אחרי תזרים הכסף שלך' },
   expensesDesc:       { en: 'Log your recurring income and expenses to understand exactly where your money comes from — and where it goes.', he: 'רשום הכנסות והוצאות חוזרות כדי להבין בדיוק מאיפה הכסף שלך מגיע — ולאן הוא הולך.' },
   expensesBullet1:    { en: 'Add recurring expenses like rent, subscriptions, and insurance on the Expenses page.', he: 'הוסף הוצאות חוזרות כמו שכירות, מנויים וביטוח בדף ההוצאות.' },
   expensesBullet2:    { en: 'Record income sources with gross and net amounts on the Income page.', he: 'רשום מקורות הכנסה עם סכומי ברוטו ונטו בדף ההכנסות.' },
   expensesBullet3:    { en: 'Finance Hub uses these to calculate your monthly surplus and savings rate.', he: 'Finance Hub משתמש בהם כדי לחשב את העודף החודשי ושיעור החיסכון שלך.' },
-  expensesAction:     { en: 'Go to Expenses', he: 'עבור להוצאות' },
   // Done
   doneTitle:          { en: "You're all set!", he: 'הכל מוכן!' },
   doneSubtitle:       { en: 'Your Finance Hub is ready. Start by adding your accounts and recording your first monthly snapshot.', he: 'Finance Hub שלך מוכן. התחל בהוספת חשבונות ותיעוד התיעוד החודשי הראשון שלך.' },
@@ -82,7 +79,6 @@ function tx(key: keyof typeof s, lang: Lang): string {
 interface OnboardingModalProps {
   onComplete: () => void
   onDismissPermanently: () => void
-  onNavigate: (page: Page) => void
   initialFamilyMembers?: FamilyMember[]
   onSaveFamilyMembers: (members: FamilyMember[]) => Promise<void>
 }
@@ -422,7 +418,6 @@ function StepDots({ step }: { step: number }) {
 export function OnboardingModal({
   onComplete,
   onDismissPermanently,
-  onNavigate,
   initialFamilyMembers = [],
   onSaveFamilyMembers,
 }: OnboardingModalProps) {
@@ -481,8 +476,6 @@ export function OnboardingModal({
             title={tx('accountsTitle', lang)}
             description={tx('accountsDesc', lang)}
             bullets={[tx('accountsBullet1', lang), tx('accountsBullet2', lang), tx('accountsBullet3', lang)]}
-            actionLabel={tx('accountsAction', lang)}
-            onAction={() => onNavigate('accounts')}
           />
         )
       case 3:
@@ -493,8 +486,6 @@ export function OnboardingModal({
             title={tx('snapshotTitle', lang)}
             description={tx('snapshotDesc', lang)}
             bullets={[tx('snapshotBullet1', lang), tx('snapshotBullet2', lang), tx('snapshotBullet3', lang)]}
-            actionLabel={tx('snapshotAction', lang)}
-            onAction={() => onNavigate('snapshot')}
           />
         )
       case 4:
@@ -505,8 +496,6 @@ export function OnboardingModal({
             title={tx('expensesTitle', lang)}
             description={tx('expensesDesc', lang)}
             bullets={[tx('expensesBullet1', lang), tx('expensesBullet2', lang), tx('expensesBullet3', lang)]}
-            actionLabel={tx('expensesAction', lang)}
-            onAction={() => onNavigate('expenses')}
           />
         )
       case 5:
