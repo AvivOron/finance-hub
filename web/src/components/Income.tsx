@@ -22,6 +22,7 @@ type FormState = {
   billingCycle: 'monthly' | 'yearly'
   owner: string
   notes: string
+  taxPoints: string
 }
 
 const emptyForm: FormState = {
@@ -30,7 +31,59 @@ const emptyForm: FormState = {
   netAmount: '',
   billingCycle: 'monthly',
   owner: '',
-  notes: ''
+  notes: '',
+  taxPoints: '2.25'
+}
+
+// Israeli income tax brackets 2025 (annual, NIS)
+const TAX_BRACKETS = [
+  { upTo: 84120,    rate: 0.10 },
+  { upTo: 120720,   rate: 0.14 },
+  { upTo: 193800,   rate: 0.20 },
+  { upTo: 269280,   rate: 0.31 },
+  { upTo: 558840,   rate: 0.35 },
+  { upTo: 721560,   rate: 0.47 },
+  { upTo: Infinity, rate: 0.50 },
+]
+
+const TAX_POINT_VALUE_ANNUAL = 2904
+
+const NI_HEALTH_LOWER_RATE = 0.035 + 0.031  // 6.6%
+const NI_HEALTH_UPPER_RATE = 0.12 + 0.05    // 17%
+const NI_LOWER_CEILING_ANNUAL = 7522 * 12
+const NI_UPPER_CEILING_ANNUAL = 47465 * 12
+
+function calcIsraeliIncomeTax(annualGross: number): number {
+  let tax = 0
+  let prev = 0
+  for (const bracket of TAX_BRACKETS) {
+    const top = Math.min(annualGross, bracket.upTo)
+    if (top > prev) {
+      tax += (top - prev) * bracket.rate
+      prev = top
+    }
+    if (annualGross <= bracket.upTo) break
+  }
+  return tax
+}
+
+function calcNationalInsurance(annualGross: number): number {
+  if (annualGross <= NI_LOWER_CEILING_ANNUAL) {
+    return annualGross * NI_HEALTH_LOWER_RATE
+  }
+  const lower = NI_LOWER_CEILING_ANNUAL * NI_HEALTH_LOWER_RATE
+  const upper = Math.min(annualGross, NI_UPPER_CEILING_ANNUAL) - NI_LOWER_CEILING_ANNUAL
+  return lower + upper * NI_HEALTH_UPPER_RATE
+}
+
+function calcNetFromGross(monthlyGross: number, taxPoints: number): number {
+  const annualGross = monthlyGross * 12
+  const incomeTax = calcIsraeliIncomeTax(annualGross)
+  const creditReduction = taxPoints * TAX_POINT_VALUE_ANNUAL
+  const netIncomeTax = Math.max(0, incomeTax - creditReduction)
+  const ni = calcNationalInsurance(annualGross)
+  const annualNet = annualGross - netIncomeTax - ni
+  return Math.round(annualNet / 12)
 }
 
 function monthlyGross(source: IncomeSource): number {
@@ -85,7 +138,8 @@ export function Income({ income, familyMembers: rawFamilyMembers, onSave }: Inco
       netAmount: String(source.netAmount),
       billingCycle: source.billingCycle,
       owner: source.owner ?? '',
-      notes: source.notes ?? ''
+      notes: source.notes ?? '',
+      taxPoints: '2.25'
     })
     setShowModal(true)
   }
@@ -145,6 +199,16 @@ export function Income({ income, familyMembers: rawFamilyMembers, onSave }: Inco
 
   const isFormValid =
     form.name.trim() && parseFloat(form.grossAmount) > 0 && parseFloat(form.netAmount) > 0
+
+  const grossForCalc = parseFloat(form.grossAmount)
+  const taxPointsNum = parseFloat(form.taxPoints)
+  const calculatedNet =
+    !isNaN(grossForCalc) && grossForCalc > 0 && !isNaN(taxPointsNum) && taxPointsNum >= 0
+      ? calcNetFromGross(
+          form.billingCycle === 'yearly' ? grossForCalc / 12 : grossForCalc,
+          taxPointsNum
+        )
+      : null
 
   return (
     <div className="px-4 py-6 md:px-8 md:py-8">
@@ -412,6 +476,48 @@ export function Income({ income, familyMembers: rawFamilyMembers, onSave }: Inco
                   className="w-full bg-[#1c1c2a] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
                 />
               </div>
+            </div>
+
+            {/* Israeli tax calculator */}
+            <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-4 py-3 space-y-3">
+              <p className="text-xs font-semibold text-indigo-300">{t('income.tax.sectionTitle', lang)}</p>
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1.5">
+                    {t('income.tax.pointsLabel', lang)}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.25"
+                    value={form.taxPoints}
+                    onChange={(e) => setForm({ ...form, taxPoints: e.target.value })}
+                    placeholder="2.25"
+                    className="w-full bg-[#1c1c2a] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={calculatedNet === null}
+                  onClick={() => calculatedNet !== null && setForm({ ...form, netAmount: String(calculatedNet) })}
+                  className="px-3 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed text-xs text-white font-medium transition-colors whitespace-nowrap"
+                >
+                  {t('income.tax.applyButton', lang)}
+                </button>
+              </div>
+              {calculatedNet !== null && (
+                <p className="text-xs text-indigo-200">
+                  {t('income.tax.preview', lang)}{' '}
+                  <span className="font-semibold">
+                    {formatCurrency(
+                      form.billingCycle === 'yearly' ? calculatedNet * 12 : calculatedNet,
+                      currency
+                    )}
+                  </span>
+                  {' '}
+                  <span className="text-indigo-400/70">{t('income.tax.previewNote', lang)}</span>
+                </p>
+              )}
             </div>
 
             <div>

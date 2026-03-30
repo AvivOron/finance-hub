@@ -217,6 +217,11 @@ const translations: Record<string, { en: string; he: string }> = {
   'income.modal.saveChanges': { en: 'Save Changes', he: 'שמור שינויים' },
   'income.modal.addIncome': { en: 'Add Income', he: 'הוסף הכנסה' },
   'income.error.save': { en: 'Error saving income: ', he: 'שגיאה בשמירת הכנסה: ' },
+  'income.tax.sectionTitle': { en: 'Auto-calculate from tax brackets', he: 'חישוב אוטומטי לפי מדרגות מס' },
+  'income.tax.pointsLabel': { en: 'Income tax credit points (נקודות זיכוי)', he: 'נקודות זיכוי של מס הכנסה' },
+  'income.tax.applyButton': { en: 'Apply net', he: 'הכנס נטו' },
+  'income.tax.preview': { en: 'Estimated net:', he: 'נטו משוער:' },
+  'income.tax.previewNote': { en: '(incl. national insurance + income tax)', he: '(כולל ביטוח לאומי + מס הכנסה)' },
 
   // Settings
   'settings.title': { en: 'Settings', he: 'הגדרות' },

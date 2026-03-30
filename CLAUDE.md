@@ -1,33 +1,36 @@
 # CLAUDE.md — Finance Hub
 
-**Electron + React + TS**, local JSON storage, net worth/accounts/expenses tracking.
+**Next.js + React + TS**, Prisma/Postgres, net worth/accounts/expenses tracking.
+
+All source is under `web/`.
 
 ## Commands
 ```bash
+cd web
 npm run dev        # Hot-reload
-npm run build      # Production → out/
+npm run build      # Production build
 npm run typecheck  # Type-check
-npm run pack       # Build .app
-npm run dist       # Build .dmg
 ```
 
-## Architecture
-- **Main** (`src/main`) — IPC `getData`/`saveData`, file I/O
-- **Preload** (`src/preload`) — exposes `window.api`
-- **Renderer** (`src/renderer/src`) — React SPA, state router, `CurrencyProvider` root
+## Architecture (`web/src/`)
+- `app/` — Next.js App Router pages
+- `components/` — React components
+- `context/` — CurrencyContext, LanguageContext, Providers
+- `translations` — i18n strings
 
 ## Components
-- `App.tsx` — router, context wrapper
 - `Sidebar.tsx` → nav + ₪/$ toggle
 - `Dashboard.tsx` → charts/cards
-- `Accounts.tsx` → CRUD
+- `Accounts.tsx` → CRUD + Modal
+- `Income.tsx` → income sources + Israeli tax calculator
 - `SnapshotEntry.tsx`, `History.tsx`, `Expenses.tsx`
-- `useData.ts` → AppData loader, localStorage fallback
+- `Insights.tsx` → AI insights
 
-## Types (`src/renderer/src/types/index.ts`)
+## Types (`web/src/types/`)
 - `Account`: id, name, type ('asset'|'liability'), kind?, owner?
 - `MonthlySnapshot`: id, date (YYYY-MM), entries[]
 - `RecurringExpense`: id, name, amount, category, billingCycle
+- `IncomeSource`: id, name, type, grossAmount, netAmount, billingCycle, owner?, notes?, active
 - `ExpenseCategory`: housing, childcare, subscriptions, insurance, utilities, transport, pets, other
 
 ## Conventions
@@ -35,4 +38,4 @@ npm run dist       # Build .dmg
 - **Dates**: YYYY-MM → `formatMonthLabel()`
 - **IDs**: `generateId()`
 - **Style**: dark (#09090f, #14141f cards, indigo-500), `cn()` merge
-- **File**: `~/.networth-data.json`
+- **i18n**: `t('key', lang)` / `tn('key', count, lang)` from `@/translations`
