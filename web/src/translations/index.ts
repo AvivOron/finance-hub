@@ -35,6 +35,15 @@ const translations: Record<string, { en: string; he: string }> = {
   'dashboard.empty.message': { en: 'Add your accounts and record your first monthly snapshot to see your net worth trends.', he: 'הוסף חשבונות והוסף את התיעוד החודשי הראשון כדי לראות את מגמות שווי הנטו שלך.' },
   'dashboard.empty.setupAccounts': { en: 'Set up accounts', he: 'הגדר חשבונות' },
   'dashboard.empty.firstSnapshot': { en: 'Enter first snapshot', he: 'הוסף תיעוד ראשון' },
+  'dashboard.card.monthlyIncome': { en: 'Monthly Income', he: 'הכנסה חודשית' },
+  'dashboard.card.monthlyExpenses': { en: 'Monthly Expenses', he: 'הוצאות חודשיות' },
+  'dashboard.card.cashFlow': { en: 'Cash Flow', he: 'תזרים מזומנים' },
+  'dashboard.card.cashFlowPositive': { en: 'surplus', he: 'עודף' },
+  'dashboard.card.cashFlowNegative': { en: 'deficit', he: 'גירעון' },
+  'dashboard.card.savingsRate': { en: 'savings rate', he: 'שיעור חיסכון' },
+  'dashboard.card.grossLabel': { en: 'gross', he: 'ברוטו' },
+  'dashboard.card.debtToAsset': { en: 'debt-to-asset', he: 'יחס חוב לנכס' },
+  'dashboard.chart.expenseBreakdown': { en: 'Monthly Expense Breakdown', he: 'פירוט הוצאות חודשיות' },
 
   // Accounts
   'accounts.title': { en: 'Accounts', he: 'חשבונות' },

@@ -7,13 +7,16 @@ import {
   Line,
   AreaChart,
   Area,
+  BarChart,
+  Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend
 } from 'recharts'
-import { TrendingUp, TrendingDown, Minus, DollarSign, ArrowUpRight, ArrowDownRight, ChevronDown, X } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, DollarSign, ArrowUpRight, ArrowDownRight, ChevronDown, X, Wallet, Receipt } from 'lucide-react'
 import { AppData } from '../types'
 import { formatCurrency, formatCurrencyShort, formatMonthLabel, formatMonthFull, cn } from '../utils'
 import { useCurrency } from '../context/CurrencyContext'
@@ -52,6 +55,46 @@ function computeMonthStats(
   })
 }
 
+function computeMonthlyIncome(data: AppData): { net: number; gross: number } {
+  const sources = (data.income ?? []).filter((s) => s.active)
+  let net = 0
+  let gross = 0
+  for (const s of sources) {
+    const factor = s.billingCycle === 'yearly' ? 1 / 12 : 1
+    net += s.netAmount * factor
+    gross += s.grossAmount * factor
+  }
+  return { net, gross }
+}
+
+function computeMonthlyExpenses(data: AppData): { total: number; byCategory: { category: string; amount: number }[] } {
+  const active = (data.expenses ?? []).filter((e) => e.active)
+  const byCategory: Record<string, number> = {}
+  let total = 0
+  for (const e of active) {
+    const monthly = e.billingCycle === 'yearly' ? e.amount / 12 : e.amount
+    total += monthly
+    byCategory[e.category] = (byCategory[e.category] ?? 0) + monthly
+  }
+  const sorted = Object.entries(byCategory)
+    .map(([category, amount]) => ({ category, amount }))
+    .sort((a, b) => b.amount - a.amount)
+  return { total, byCategory: sorted }
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  housing: '#6366f1',
+  childcare: '#ec4899',
+  groceries: '#10b981',
+  transport: '#f59e0b',
+  utilities: '#3b82f6',
+  insurance: '#8b5cf6',
+  subscriptions: '#06b6d4',
+  lifestyle: '#f97316',
+  pets: '#84cc16',
+  other: '#6b7280',
+}
+
 const tooltipStyle = {
   backgroundColor: '#1a1a27',
   border: '1px solid rgba(255,255,255,0.08)',
@@ -59,6 +102,7 @@ const tooltipStyle = {
   padding: '10px 14px'
 }
 const tooltipLabelStyle = { color: '#e5e7eb', fontWeight: 600, marginBottom: 4 }
+const tooltipItemStyle = { color: '#d1d5db' }
 const tooltipWrapperStyle = { outline: 'none' }
 const tooltipCursor = { fill: 'rgba(255,255,255,0.05)' }
 
@@ -90,6 +134,13 @@ export function Dashboard({ data, onNavigate }: DashboardProps) {
     momChange !== null && prev?.netWorth !== 0 ? (momChange / Math.abs(prev.netWorth)) * 100 : null
 
   const hasData = stats.length > 0
+
+  const { net: monthlyNetIncome, gross: monthlyGrossIncome } = computeMonthlyIncome(data)
+  const { total: monthlyExpenses, byCategory: expensesByCategory } = computeMonthlyExpenses(data)
+  const cashFlow = monthlyNetIncome > 0 ? monthlyNetIncome - monthlyExpenses : null
+  const savingsRate = monthlyNetIncome > 0 && cashFlow !== null ? (cashFlow / monthlyNetIncome) * 100 : null
+  const hasIncomeOrExpenses = monthlyNetIncome > 0 || monthlyExpenses > 0
+  const debtToAsset = currentAssets > 0 && currentLiabilities > 0 ? (currentLiabilities / currentAssets) * 100 : null
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8 space-y-6 md:space-y-8">
@@ -218,6 +269,13 @@ export function Dashboard({ data, onNavigate }: DashboardProps) {
           value={fmt(currentAssets)}
           icon={<TrendingUp size={18} />}
           accent="emerald"
+          sub={
+            debtToAsset !== null ? (
+              <span className="text-gray-500">
+                {debtToAsset.toFixed(1)}% {t('dashboard.card.debtToAsset', lang)}
+              </span>
+            ) : null
+          }
         />
         {currentLiabilities !== 0 && (
           <SummaryCard
@@ -242,6 +300,50 @@ export function Dashboard({ data, onNavigate }: DashboardProps) {
           }
         />
       </div>
+
+      {/* Income & Expenses Cards */}
+      {hasIncomeOrExpenses && (
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
+          {monthlyNetIncome > 0 && (
+            <SummaryCard
+              label={t('dashboard.card.monthlyIncome', lang)}
+              value={fmt(monthlyNetIncome)}
+              icon={<Wallet size={18} />}
+              accent="emerald"
+              sub={
+                monthlyGrossIncome !== monthlyNetIncome ? (
+                  <span className="text-gray-500">
+                    {fmtShort(monthlyGrossIncome)} {t('dashboard.card.grossLabel', lang)}
+                  </span>
+                ) : null
+              }
+            />
+          )}
+          {monthlyExpenses > 0 && (
+            <SummaryCard
+              label={t('dashboard.card.monthlyExpenses', lang)}
+              value={fmt(monthlyExpenses)}
+              icon={<Receipt size={18} />}
+              accent="red"
+            />
+          )}
+          {cashFlow !== null && (
+            <SummaryCard
+              label={t('dashboard.card.cashFlow', lang)}
+              value={(cashFlow >= 0 ? '+' : '') + fmt(cashFlow)}
+              icon={cashFlow >= 0 ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
+              accent={cashFlow >= 0 ? 'emerald' : 'red'}
+              sub={
+                savingsRate !== null ? (
+                  <span className={cashFlow >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                    {savingsRate.toFixed(1)}% {t('dashboard.card.savingsRate', lang)}
+                  </span>
+                ) : null
+              }
+            />
+          )}
+        </div>
+      )}
 
       {!hasData ? (
         <EmptyState onNavigate={onNavigate} lang={lang} />
@@ -344,6 +446,53 @@ export function Dashboard({ data, onNavigate }: DashboardProps) {
                   />
                 </AreaChart>
               </ResponsiveContainer>
+            </ChartCard>
+          )}
+
+          {expensesByCategory.length > 0 && (
+            <ChartCard title={t('dashboard.chart.expenseBreakdown', lang)}>
+              <div dir="ltr">
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart
+                  data={expensesByCategory}
+                  layout="vertical"
+                  margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tick={{ fill: '#6b7280', fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={fmtShort}
+                    width={60}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="category"
+                    tick={{ fill: '#9ca3af', fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={90}
+                    tickFormatter={(v: string) => v.charAt(0).toUpperCase() + v.slice(1)}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    wrapperStyle={tooltipWrapperStyle}
+                    labelStyle={tooltipLabelStyle}
+                    itemStyle={tooltipItemStyle}
+                    cursor={tooltipCursor}
+                    formatter={(v) => fmt(v as number)}
+                    labelFormatter={(label: string) => label.charAt(0).toUpperCase() + label.slice(1)}
+                  />
+                  <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
+                    {expensesByCategory.map((entry) => (
+                      <Cell key={entry.category} fill={CATEGORY_COLORS[entry.category] ?? '#6b7280'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              </div>
             </ChartCard>
           )}
         </>
