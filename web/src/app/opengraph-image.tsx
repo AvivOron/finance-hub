@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 export const alt = 'Finance Hub'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
@@ -41,18 +41,19 @@ export default function Image() {
         </div>
 
         {/* Title */}
-        <div style={{ fontSize: 64, fontWeight: 700, color: '#ffffff', letterSpacing: '-2px', marginBottom: 16 }}>
+        <div style={{ display: 'flex', fontSize: 64, fontWeight: 700, color: '#ffffff', letterSpacing: '-2px', marginBottom: 16 }}>
           Finance Hub
         </div>
 
         {/* Subtitle */}
-        <div style={{ fontSize: 26, color: '#6b7280', textAlign: 'center', maxWidth: 600 }}>
-          Track your net worth, recurring expenses,{'\n'}and income — all in one place.
+        <div style={{ display: 'flex', fontSize: 26, color: '#6b7280', textAlign: 'center', maxWidth: 600 }}>
+          Track your net worth, recurring expenses, and income — all in one place.
         </div>
 
         {/* URL badge */}
         <div
           style={{
+            display: 'flex',
             marginTop: 48,
             padding: '10px 24px',
             borderRadius: 999,
