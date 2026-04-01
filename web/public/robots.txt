@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /finance-hub
+Disallow: /finance-hub/app
+
+Sitemap: https://www.avivo.dev/sitemap.xml
