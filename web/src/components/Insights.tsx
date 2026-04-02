@@ -14,22 +14,91 @@ interface InsightsProps {
   onSaveInsights?: (insights: { content: string; language: string; generatedAt: string }) => Promise<void>
 }
 
-// Minimal markdown renderer: handles ## headers, **bold**, and - bullet lists
+// Markdown renderer: handles # h1, ## h2, ### h3, **bold**, - bullet lists, and | tables
 function renderMarkdown(text: string): React.ReactNode[] {
   const lines = text.split('\n')
   const nodes: React.ReactNode[] = []
   let i = 0
 
+  function isTableRow(line: string) {
+    return line.trim().startsWith('|') && line.trim().endsWith('|')
+  }
+
+  function isSeparatorRow(line: string) {
+    return /^\|[\s|:-]+\|$/.test(line.trim())
+  }
+
   while (i < lines.length) {
     const line = lines[i]
+
+    if (line.startsWith('# ') && !line.startsWith('## ')) {
+      nodes.push(
+        <h1 key={i} className="text-lg font-bold text-white mt-6 mb-2 first:mt-0">
+          {renderInline(line.slice(2))}
+        </h1>
+      )
+      i++
+      continue
+    }
+
+    if (line.startsWith('### ')) {
+      nodes.push(
+        <h3 key={i} className="text-sm font-semibold text-gray-200 mt-4 mb-1">
+          {renderInline(line.slice(4))}
+        </h3>
+      )
+      i++
+      continue
+    }
 
     if (line.startsWith('## ')) {
       nodes.push(
         <h2 key={i} className="text-base font-semibold text-white mt-6 mb-2 first:mt-0">
-          {line.slice(3)}
+          {renderInline(line.slice(3))}
         </h2>
       )
       i++
+      continue
+    }
+
+    // Table: collect all consecutive table rows
+    if (isTableRow(line)) {
+      const tableLines: string[] = []
+      while (i < lines.length && isTableRow(lines[i])) {
+        tableLines.push(lines[i])
+        i++
+      }
+      const nonSeparator = tableLines.filter(l => !isSeparatorRow(l))
+      const [headerRow, ...bodyRows] = nonSeparator
+      const parseRow = (row: string) =>
+        row.trim().slice(1, -1).split('|').map(cell => cell.trim())
+
+      nodes.push(
+        <div key={i} className="overflow-x-auto my-3">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                {parseRow(headerRow).map((cell, j) => (
+                  <th key={j} className="text-left text-gray-400 font-medium px-3 py-1.5 border-b border-white/10">
+                    {renderInline(cell)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {bodyRows.map((row, ri) => (
+                <tr key={ri} className="border-b border-white/5">
+                  {parseRow(row).map((cell, j) => (
+                    <td key={j} className="text-gray-300 px-3 py-1.5">
+                      {renderInline(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
       continue
     }
 
@@ -52,7 +121,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
       continue
     }
 
-    if (line.trim() === '') {
+    if (line.trim() === '' || line.trim() === '---') {
       i++
       continue
     }
@@ -204,8 +273,8 @@ export function Insights({ data, user, onSaveInsights }: InsightsProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div className="absolute inset-0 flex flex-col px-4 py-6 md:px-8 md:py-8">
+      <div className="max-w-5xl w-full mx-auto flex flex-col flex-1 min-h-0 gap-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -264,7 +333,7 @@ export function Insights({ data, user, onSaveInsights }: InsightsProps) {
             </button>
           </div>
         ) : (
-          <div className="bg-[#14141f] border border-white/5 rounded-xl p-5 md:p-6 overflow-hidden">
+          <div className="flex-1 min-h-0 bg-[#14141f] border border-white/5 rounded-xl p-5 md:p-6 flex flex-col overflow-hidden">
             {(loading || translating) && !content ? (
               <div className="flex items-center gap-3 text-gray-500 py-4">
                 <div className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin shrink-0" />
@@ -273,7 +342,7 @@ export function Insights({ data, user, onSaveInsights }: InsightsProps) {
                 </span>
               </div>
             ) : (
-              <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
+              <div className="flex-1 overflow-y-auto">
                 {renderMarkdown(content)}
                 {(loading || translating) && (
                   <span className="inline-block w-1.5 h-4 bg-indigo-400 ml-0.5 animate-pulse rounded-sm" />

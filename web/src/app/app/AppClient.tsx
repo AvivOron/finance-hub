@@ -153,7 +153,7 @@ export function AppClient({ user }: AppClientProps) {
           <span className="text-sm font-semibold text-white/90">Finance Hub</span>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className={`flex-1 ${page === 'insights' ? 'overflow-hidden relative' : 'overflow-y-auto'}`}>
           {page === 'dashboard' && (
             <Dashboard data={data} onNavigate={handleNavigate} />
           )}
