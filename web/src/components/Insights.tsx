@@ -15,7 +15,8 @@ interface InsightsProps {
 }
 
 // Markdown renderer: handles # h1, ## h2, ### h3, **bold**, - bullet lists, and | tables
-function renderMarkdown(text: string): React.ReactNode[] {
+function renderMarkdown(text: string, lang?: string): React.ReactNode[] {
+  const isRtl = lang === 'he'
   const lines = text.split('\n')
   const nodes: React.ReactNode[] = []
   let i = 0
@@ -75,11 +76,11 @@ function renderMarkdown(text: string): React.ReactNode[] {
 
       nodes.push(
         <div key={i} className="overflow-x-auto my-3">
-          <table className="w-full text-sm border-collapse">
+          <table className="w-full text-sm border-collapse" dir={isRtl ? 'rtl' : 'ltr'}>
             <thead>
               <tr>
                 {parseRow(headerRow).map((cell, j) => (
-                  <th key={j} className="text-left text-gray-400 font-medium px-3 py-1.5 border-b border-white/10">
+                  <th key={j} className="text-gray-400 font-medium px-3 py-1.5 border-b border-white/10 text-start">
                     {renderInline(cell)}
                   </th>
                 ))}
@@ -343,7 +344,7 @@ export function Insights({ data, user, onSaveInsights }: InsightsProps) {
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto">
-                {renderMarkdown(content)}
+                {renderMarkdown(content, insightsLanguage ?? lang)}
                 {(loading || translating) && (
                   <span className="inline-block w-1.5 h-4 bg-indigo-400 ml-0.5 animate-pulse rounded-sm" />
                 )}
