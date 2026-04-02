@@ -12,6 +12,7 @@ import {
   BrainCircuit,
   Users,
   RefreshCw,
+  LineChart,
 } from 'lucide-react'
 import { cn } from '@/utils'
 
@@ -60,6 +61,11 @@ const features = [
     icon: RefreshCw,
     title:       { en: 'Multi-currency',        he: 'ריבוי מטבעות' },
     description: { en: 'Switch between NIS (₪) and USD ($) with automatic conversion across all views.', he: 'עבור בין ₪ ל-$ עם המרה אוטומטית בכל התצוגות.' },
+  },
+  {
+    icon: LineChart,
+    title:       { en: 'Future projections',    he: 'תחזיות עתידיות' },
+    description: { en: 'Forecast your net worth years ahead. Model returns, deposits, and fees to see exactly where you\'re headed.', he: 'חזה את שווי הנטו שלך שנים קדימה. בחן תשואות, הפקדות ודמי ניהול כדי לדעת לאן אתה הולך.' },
   },
 ]
 

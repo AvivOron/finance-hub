@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
 
 type Language = 'en' | 'he'
 
@@ -14,15 +14,14 @@ const LanguageContext = createContext<LangCtx>({ lang: 'en', setLang: () => {} }
 const LS_KEY = 'networth-language'
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Language>(() => {
-    if (typeof window === 'undefined') return 'en'
+  const [lang, setLangState] = useState<Language>('en')
+
+  useEffect(() => {
     try {
       const saved = localStorage.getItem(LS_KEY)
-      return saved === 'he' || saved === 'en' ? saved : 'en'
-    } catch {
-      return 'en'
-    }
-  })
+      if (saved === 'he' || saved === 'en') setLangState(saved)
+    } catch {}
+  }, [])
 
   function setLang(l: Language) {
     setLangState(l)

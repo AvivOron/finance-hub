@@ -9,6 +9,7 @@ import {
   Receipt,
   TrendingUp,
   Sparkles,
+  LineChart,
   X,
   ChevronRight,
   ChevronLeft,
@@ -64,6 +65,16 @@ const TOUR_STEPS: TourStep[] = [
     body: {
       en: "A timeline of every snapshot you've recorded, with month-over-month changes. Great for spotting trends and reviewing your financial journey.",
       he: 'ציר זמן של כל תיעוד שהוקלט, עם שינויים חודשיים. מצוין לזיהוי מגמות וסקירת המסע הפיננסי שלך.',
+    },
+  },
+  {
+    page: 'projections',
+    icon: LineChart,
+    navId: 'tour-nav-projections',
+    title: { en: 'Projections', he: 'תחזיות' },
+    body: {
+      en: 'See where your money will be in 5, 10, or 30 years. Model different return rates, account for monthly deposits, and see the real cost of fees over time.',
+      he: 'ראה לאן הכסף שלך יגיע בעוד 5, 10 או 30 שנה. בחן שיעורי תשואה שונים, הפקדות חודשיות והשפעת דמי הניהול לאורך זמן.',
     },
   },
   {

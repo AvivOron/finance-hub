@@ -93,4 +93,5 @@ export type Page =
   | 'expenses'
   | 'income'
   | 'insights'
+  | 'projections'
   | 'settings'

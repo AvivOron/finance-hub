@@ -13,7 +13,8 @@ import {
   TrendingUp,
   Sparkles,
   LogOut,
-  Loader2
+  Loader2,
+  LineChart
 } from 'lucide-react'
 import { Page } from '../types'
 import { cn } from '../utils'
@@ -34,7 +35,7 @@ interface SidebarProps {
   }
 }
 
-type TrackingPage = 'dashboard' | 'accounts' | 'snapshot' | 'history'
+type TrackingPage = 'dashboard' | 'accounts' | 'snapshot' | 'history' | 'projections'
 type ExpensePage = 'expenses' | 'income' | 'insights'
 type SettingPage = 'settings'
 
@@ -42,7 +43,8 @@ const trackingLabelMap: Record<TrackingPage, string> = {
   'dashboard': 'nav.dashboard',
   'accounts': 'nav.accounts',
   'snapshot': 'nav.snapshot',
-  'history': 'nav.history'
+  'history': 'nav.history',
+  'projections': 'nav.projections'
 }
 
 const expenseLabelMap: Record<ExpensePage, string> = {
@@ -59,7 +61,8 @@ const trackingItems: { id: TrackingPage; icon: React.ElementType }[] = [
   { id: 'dashboard', icon: LayoutDashboard },
   { id: 'accounts', icon: Wallet },
   { id: 'snapshot', icon: PlusCircle },
-  { id: 'history', icon: History }
+  { id: 'history', icon: History },
+  { id: 'projections', icon: LineChart }
 ]
 
 const expenseItems: { id: ExpensePage; icon: React.ElementType }[] = [

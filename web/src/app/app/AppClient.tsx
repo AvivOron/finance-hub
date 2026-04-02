@@ -10,6 +10,7 @@ import { Settings } from '@/components/Settings'
 import { Expenses } from '@/components/Expenses'
 import { Income } from '@/components/Income'
 import { Insights } from '@/components/Insights'
+import { Projections } from '@/components/Projections'
 import { OnboardingModal } from '@/components/OnboardingModal'
 import { TourOverlay } from '@/components/TourOverlay'
 import { useData } from '@/hooks/useData'
@@ -195,6 +196,9 @@ export function AppClient({ user }: AppClientProps) {
           )}
           {page === 'insights' && (
             <Insights data={data} user={user} onSaveInsights={saveAiInsights} />
+          )}
+          {page === 'projections' && (
+            <Projections data={data} />
           )}
           {page === 'settings' && (
             <Settings data={data} onSaveFamilyMembers={saveFamilyMembers} />

@@ -29,38 +29,57 @@ export function generateMockData(): AppData {
         name: 'Emergency Fund',
         type: 'asset',
         kind: 'bank',
-        owner: 'You'
+        owner: 'You',
+        monthlyDeposit: 500
       },
       {
         id: 'brokerage-1',
         name: 'Investment Portfolio',
         type: 'asset',
         kind: 'brokerage',
-        owner: 'You'
+        owner: 'You',
+        monthlyDeposit: 3000,
+        feesOnBalance: 0.5,
+        description: '70% stocks, 30% bonds — index funds'
       },
       {
         id: 'savings-partner',
         name: 'Partner Savings',
         type: 'asset',
         kind: 'bank',
-        owner: 'Partner'
+        owner: 'Partner',
+        monthlyDeposit: 1500
+      },
+      {
+        id: 'pension-1',
+        name: 'Pension Fund',
+        type: 'asset',
+        kind: 'piggyBank',
+        owner: 'You',
+        monthlyDeposit: 2200,
+        feesOnBalance: 0.3,
+        feesOnDeposit: 1.5,
+        description: 'Employer + employee contributions'
       },
       {
         id: 'piggy-sarah',
-        name: "Sarah's Piggy Bank",
+        name: "Sarah's Savings",
         type: 'asset',
         kind: 'piggyBank',
-        owner: 'Sarah'
+        owner: 'Sarah',
+        monthlyDeposit: 200
       },
       {
         id: 'mortgage',
         name: 'Mortgage',
-        type: 'liability'
+        type: 'liability',
+        monthlyDeposit: 2200
       },
       {
         id: 'car-loan',
         name: 'Car Loan',
-        type: 'liability'
+        type: 'liability',
+        monthlyDeposit: 500
       },
       {
         id: 'credit-card-1',
@@ -71,7 +90,8 @@ export function generateMockData(): AppData {
         id: 'student-loans',
         name: 'Student Loans',
         type: 'liability',
-        owner: 'Partner'
+        owner: 'Partner',
+        monthlyDeposit: 400
       },
       {
         id: 'heloc',
@@ -107,6 +127,11 @@ export function generateMockData(): AppData {
           {
             accountId: 'savings-partner',
             balance: 45000,
+            lastUpdatedAt: new Date(prev2Month).toISOString()
+          },
+          {
+            accountId: 'pension-1',
+            balance: 142000,
             lastUpdatedAt: new Date(prev2Month).toISOString()
           },
           {
@@ -171,6 +196,11 @@ export function generateMockData(): AppData {
             lastUpdatedAt: new Date(prevMonth).toISOString()
           },
           {
+            accountId: 'pension-1',
+            balance: 144500,
+            lastUpdatedAt: new Date(prevMonth).toISOString()
+          },
+          {
             accountId: 'piggy-sarah',
             balance: 5500,
             lastUpdatedAt: new Date(prevMonth).toISOString()
@@ -229,6 +259,11 @@ export function generateMockData(): AppData {
           {
             accountId: 'savings-partner',
             balance: 52000,
+            lastUpdatedAt: today.toISOString()
+          },
+          {
+            accountId: 'pension-1',
+            balance: 147200,
             lastUpdatedAt: today.toISOString()
           },
           {
