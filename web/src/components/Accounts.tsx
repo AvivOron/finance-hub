@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import {
   Plus, Pencil, Trash2, TrendingUp, TrendingDown, Check,
-  Landmark, LineChart, Baby, Globe, X, PiggyBank
+  Landmark, LineChart, Baby, Globe, X, PiggyBank, GripVertical
 } from 'lucide-react'
 import { Account, AccountKind, FamilyMember } from '../types'
 import { generateId, cn } from '../utils'
@@ -23,9 +23,14 @@ type FormState = {
   owner: string
   notes: string
   url: string
+  monthlyDeposit: string
+  feesFixed: string
+  feesOnBalance: string
+  feesOnDeposit: string
+  description: string
 }
 
-const emptyForm: FormState = { name: '', type: 'asset', kind: 'custom', owner: '', notes: '', url: '' }
+const emptyForm: FormState = { name: '', type: 'asset', kind: 'custom', owner: '', notes: '', url: '', monthlyDeposit: '', feesFixed: '', feesOnBalance: '', feesOnDeposit: '', description: '' }
 
 export const ACCOUNT_KIND_CONFIG: Record<
   Exclude<AccountKind, 'custom'>,
@@ -96,7 +101,12 @@ export function Accounts({ accounts, familyMembers: rawFamilyMembers, onSave }: 
       kind: account.kind ?? 'custom',
       owner: account.owner ?? '',
       notes: account.notes ?? '',
-      url: account.url ?? ''
+      url: account.url ?? '',
+      monthlyDeposit: account.monthlyDeposit != null ? String(account.monthlyDeposit) : '',
+      feesFixed: account.feesFixed != null ? String(account.feesFixed) : '',
+      feesOnBalance: account.feesOnBalance != null ? String(account.feesOnBalance) : '',
+      feesOnDeposit: account.feesOnDeposit != null ? String(account.feesOnDeposit) : '',
+      description: account.description ?? ''
     })
     setShowModal(true)
   }
@@ -106,6 +116,12 @@ export function Accounts({ accounts, familyMembers: rawFamilyMembers, onSave }: 
     setSaving(true)
     try {
       let updated: Account[]
+      const monthlyDeposit = form.monthlyDeposit.trim() ? parseFloat(form.monthlyDeposit) : undefined
+      const feesFixed = form.feesFixed.trim() ? parseFloat(form.feesFixed) : undefined
+      const feesOnBalance = form.feesOnBalance.trim() ? parseFloat(form.feesOnBalance) : undefined
+      const feesOnDeposit = form.feesOnDeposit.trim() ? parseFloat(form.feesOnDeposit) : undefined
+      const description = form.description.trim() || undefined
+
       if (editingId) {
         updated = accounts.map((a) =>
           a.id === editingId
@@ -116,7 +132,12 @@ export function Accounts({ accounts, familyMembers: rawFamilyMembers, onSave }: 
                 kind: form.kind,
                 owner: form.owner || undefined,
                 notes: form.notes.trim() || undefined,
-                url: form.url.trim() || undefined
+                url: form.url.trim() || undefined,
+                monthlyDeposit,
+                feesFixed,
+                feesOnBalance,
+                feesOnDeposit,
+                description
               }
             : a
         )
@@ -128,7 +149,12 @@ export function Accounts({ accounts, familyMembers: rawFamilyMembers, onSave }: 
           kind: form.kind,
           owner: form.owner || undefined,
           notes: form.notes.trim() || undefined,
-          url: form.url.trim() || undefined
+          url: form.url.trim() || undefined,
+          monthlyDeposit,
+          feesFixed,
+          feesOnBalance,
+          feesOnDeposit,
+          description
         }
         updated = [...accounts, newAccount]
       }
@@ -144,6 +170,13 @@ export function Accounts({ accounts, familyMembers: rawFamilyMembers, onSave }: 
   async function handleDelete(id: string) {
     await onSave(accounts.filter((a) => a.id !== id))
     setDeleteConfirm(null)
+  }
+
+  async function handleReorder(reordered: Account[]) {
+    const groupType = reordered[0]?.type
+    if (!groupType) return
+    const others = accounts.filter((a) => a.type !== groupType)
+    await onSave([...reordered, ...others])
   }
 
   return (
@@ -175,6 +208,7 @@ export function Accounts({ accounts, familyMembers: rawFamilyMembers, onSave }: 
           onDeleteRequest={(id) => setDeleteConfirm(id)}
           onDeleteConfirm={handleDelete}
           onDeleteCancel={() => setDeleteConfirm(null)}
+          onReorder={handleReorder}
           lang={lang}
         />
         <AccountGroup
@@ -189,6 +223,7 @@ export function Accounts({ accounts, familyMembers: rawFamilyMembers, onSave }: 
           onDeleteRequest={(id) => setDeleteConfirm(id)}
           onDeleteConfirm={handleDelete}
           onDeleteCancel={() => setDeleteConfirm(null)}
+          onReorder={handleReorder}
           lang={lang}
         />
       </div>
@@ -295,6 +330,83 @@ export function Accounts({ accounts, familyMembers: rawFamilyMembers, onSave }: 
                 className="w-full bg-[#1c1c2a] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
               />
             </div>
+            <div className="flex gap-3 items-end">
+              <div className="flex-1 flex flex-col">
+                <label className="text-xs font-medium text-gray-400 mb-1.5 min-h-[2.5rem] flex items-end">
+                  <span>{t('accounts.modal.monthlyDepositLabel', lang)} <span className="text-gray-600">{t('accounts.modal.optional', lang)}</span></span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.monthlyDeposit}
+                  onChange={(e) => setForm({ ...form, monthlyDeposit: e.target.value })}
+                  placeholder={t('accounts.modal.monthlyDepositPlaceholder', lang)}
+                  className="w-full bg-[#1c1c2a] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
+                />
+              </div>
+              <div className="flex-1 flex flex-col">
+                <label className="text-xs font-medium text-gray-400 mb-1.5 min-h-[2.5rem] flex items-end">
+                  <span>{t('accounts.modal.feesFixedLabel', lang)} <span className="text-gray-600">{t('accounts.modal.optional', lang)}</span></span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.feesFixed}
+                  onChange={(e) => setForm({ ...form, feesFixed: e.target.value })}
+                  placeholder={t('accounts.modal.feesPlaceholder', lang)}
+                  className="w-full bg-[#1c1c2a] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 items-end">
+              <div className="flex-1 flex flex-col">
+                <label className="text-xs font-medium text-gray-400 mb-1.5 min-h-[2.5rem] flex items-end">
+                  <span>{t('accounts.modal.feesOnBalanceLabel', lang)} <span className="text-gray-600">{t('accounts.modal.optional', lang)}</span></span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.feesOnBalance}
+                    onChange={(e) => setForm({ ...form, feesOnBalance: e.target.value })}
+                    placeholder="0.5"
+                    className="w-full bg-[#1c1c2a] border border-white/10 rounded-lg px-3 py-2.5 ltr:pr-10 rtl:pl-10 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
+                  />
+                  <span className="absolute ltr:right-3 rtl:left-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">%/yr</span>
+                </div>
+              </div>
+              <div className="flex-1 flex flex-col">
+                <label className="text-xs font-medium text-gray-400 mb-1.5 min-h-[2.5rem] flex items-end">
+                  <span>{t('accounts.modal.feesOnDepositLabel', lang)} <span className="text-gray-600">{t('accounts.modal.optional', lang)}</span></span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.feesOnDeposit}
+                    onChange={(e) => setForm({ ...form, feesOnDeposit: e.target.value })}
+                    placeholder="1.5"
+                    className="w-full bg-[#1c1c2a] border border-white/10 rounded-lg px-3 py-2.5 ltr:pr-8 rtl:pl-8 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
+                  />
+                  <span className="absolute ltr:right-3 rtl:left-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">%</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                {t('accounts.modal.descriptionLabel', lang)} <span className="text-gray-600">{t('accounts.modal.optional', lang)}</span>
+              </label>
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder={t('accounts.modal.descriptionPlaceholder', lang)}
+                rows={2}
+                className="w-full bg-[#1c1c2a] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors resize-none"
+              />
+            </div>
             <div className="flex gap-2 pt-1">
               <button
                 onClick={() => setShowModal(false)}
@@ -329,6 +441,7 @@ function AccountGroup({
   onDeleteRequest,
   onDeleteConfirm,
   onDeleteCancel,
+  onReorder,
   lang
 }: {
   title: string
@@ -342,8 +455,40 @@ function AccountGroup({
   onDeleteRequest: (id: string) => void
   onDeleteConfirm: (id: string) => void
   onDeleteCancel: () => void
+  onReorder: (reordered: Account[]) => void
   lang: string
 }) {
+  const dragIndex = useRef<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+
+  function handleDragStart(index: number) {
+    dragIndex.current = index
+  }
+
+  function handleDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault()
+    setDragOverIndex(index)
+  }
+
+  function handleDrop(index: number) {
+    if (dragIndex.current === null || dragIndex.current === index) {
+      dragIndex.current = null
+      setDragOverIndex(null)
+      return
+    }
+    const reordered = [...accounts]
+    const [moved] = reordered.splice(dragIndex.current, 1)
+    reordered.splice(index, 0, moved)
+    dragIndex.current = null
+    setDragOverIndex(null)
+    onReorder(reordered)
+  }
+
+  function handleDragEnd() {
+    dragIndex.current = null
+    setDragOverIndex(null)
+  }
+
   return (
     <div className="bg-[#14141f] border border-white/5 rounded-xl overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
@@ -380,9 +525,27 @@ function AccountGroup({
             </button>
           </div>
         ) : (
-          accounts.map((account) => (
-            <div key={account.id} className="flex items-center justify-between px-5 py-3.5 group">
-              <div className="min-w-0">
+          accounts.map((account, index) => (
+            <div
+              key={account.id}
+              draggable
+              onDragStart={() => handleDragStart(index)}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDrop={() => handleDrop(index)}
+              onDragEnd={handleDragEnd}
+              className={cn(
+                'flex items-center justify-between pl-1 pr-5 py-3.5 group transition-colors',
+                dragOverIndex === index && dragIndex.current !== index
+                  ? 'bg-indigo-500/10 border-t border-indigo-500/30'
+                  : ''
+              )}
+            >
+              <div className="flex items-start gap-4 min-w-0">
+                <GripVertical
+                  size={18}
+                  className="shrink-0 text-gray-600 cursor-grab active:cursor-grabbing mt-1"
+                />
+                <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-medium text-gray-200 truncate">{account.name}</p>
                   {account.url && (
@@ -419,6 +582,7 @@ function AccountGroup({
                 {account.notes && (
                   <p className="text-xs text-gray-600 truncate mt-1">{account.notes}</p>
                 )}
+                </div>
               </div>
               <div className="flex items-center gap-1 ml-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 {deleteConfirm === account.id ? (

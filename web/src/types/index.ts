@@ -8,6 +8,11 @@ export interface Account {
   owner?: string // family member who owns this account
   notes?: string
   url?: string // vendor website URL
+  monthlyDeposit?: number // average monthly deposit/contribution
+  feesFixed?: number // fixed monthly fee amount
+  feesOnBalance?: number // % of accumulated balance per year (e.g. pension management fee)
+  feesOnDeposit?: number // % deducted from each deposit (e.g. pension deposit fee)
+  description?: string // free text, e.g. investment portfolio details
 }
 
 export interface SnapshotEntry {

@@ -28,9 +28,15 @@ function buildPrompt(data: AppData, currency: string, language: string = 'en'): 
   }).join('\n')
 
   // Accounts
-  const accountsSummary = data.accounts.map((a) =>
-    `  - ${a.name} (${a.type}, kind=${a.kind ?? 'custom'}${a.owner ? `, owner=${a.owner}` : ''})`
-  ).join('\n')
+  const accountsSummary = data.accounts.map((a) => {
+    let line = `  - ${a.name} (${a.type}, kind=${a.kind ?? 'custom'}${a.owner ? `, owner=${a.owner}` : ''})`
+    if (a.monthlyDeposit != null) line += `, monthly deposit=${currencySymbol}${a.monthlyDeposit.toLocaleString()}`
+    if (a.feesFixed != null) line += `, monthly fee=${currencySymbol}${a.feesFixed.toLocaleString()}`
+    if (a.feesOnBalance != null) line += `, management fee on balance=${a.feesOnBalance}%/year`
+    if (a.feesOnDeposit != null) line += `, management fee on deposit=${a.feesOnDeposit}%`
+    if (a.description) line += ` — "${a.description}"`
+    return line
+  }).join('\n')
 
   // Latest snapshot breakdown
   const latest = snapshots[snapshots.length - 1]
