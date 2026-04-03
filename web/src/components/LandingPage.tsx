@@ -71,7 +71,7 @@ const features = [
   {
     icon: PieChart,
     title:       { en: 'Portfolio tracking',    he: 'מעקב תיק השקעות' },
-    description: { en: 'Upload brokerage statements to track holdings, gains, and fees. See your asset allocation at a glance.', he: 'העלה דוחות של חשבונות השקעות כדי לעקוב אחרי אחזקות, רווחים ודמים. ראה את הקצאת הנכסים שלך במבט אחד.' },
+    description: { en: 'Upload brokerage statements to track holdings, gains, and fees. See your asset allocation at a glance.', he: 'העלה דוחות חשבונות השקעות כדי לעקוב אחרי אחזקות, רווחים ודמים. ראה את הקצאת הנכסים שלך במבט אחד.' },
   },
 ]
 
@@ -94,7 +94,7 @@ const steps = [
   },
   {
     title:  { en: 'Upload portfolio holdings',  he: 'העלה את אחזקות התיק' },
-    detail: { en: 'Import XLSX brokerage statements to track investments, gains, and management fees in one place.', he: 'ייבא דוחות של חברות ביטחון כדי לעקוב אחרי השקעות, רווחים ודמי ניהול במקום אחד.' },
+    detail: { en: 'Import XLSX brokerage statements to track investments, gains, and management fees in one place.', he: 'ייבא דוחות חשבונות השקעות כדי לעקוב אחרי השקעות, רווחים ודמי ניהול במקום אחד.' },
   },
 ]
 
