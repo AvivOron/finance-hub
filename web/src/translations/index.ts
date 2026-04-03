@@ -46,6 +46,7 @@ const translations: Record<string, { en: string; he: string }> = {
   'dashboard.card.grossLabel': { en: 'gross', he: 'ברוטו' },
   'dashboard.card.debtToAsset': { en: 'debt-to-asset', he: 'יחס חוב לנכס' },
   'dashboard.chart.expenseBreakdown': { en: 'Monthly Expense Breakdown', he: 'פירוט הוצאות חודשיות' },
+  'dashboard.chart.investmentBreakdown': { en: 'Investment Breakdown', he: 'פילוח השקעות' },
 
   // Accounts
   'accounts.title': { en: 'Accounts', he: 'חשבונות' },

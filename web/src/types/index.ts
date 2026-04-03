@@ -107,9 +107,10 @@ export interface Investment {
   costPrice: number // שער עלות
   gainFromCostNIS: number // שינוי מעלות בש"ח
   gainFromCostPct: number // שינוי מעלות %
-  category?: string // הערה אישית (e.g. מניות, אג"ח)
+  category?: string // LLM-categorized type (e.g. מניות, אגרות חוב, שקל)
+  personalNote?: string // User's custom note (from spreadsheet column)
   portfolioPct?: number // נתח מהתיק (excellence only)
-  managementFee?: number // % annual management fee
+  managementFee?: number // דמי ניהול שנתיים %
   feeSource?: string // where fee was found
 }
 

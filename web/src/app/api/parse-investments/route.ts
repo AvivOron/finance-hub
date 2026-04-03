@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { read, utils } from 'xlsx'
 import { Investment } from '@/types'
+import { Anthropic } from '@anthropic-ai/sdk'
 
 export const runtime = 'nodejs'
 
@@ -8,6 +9,48 @@ interface ParseResult {
   holdings: Investment[]
   totalValueNIS: number
   updatedAt: string
+}
+
+async function categorizeHoldings(holdings: Partial<Investment>[]): Promise<string[]> {
+  const client = new Anthropic()
+
+  const holdingsList = holdings
+    .map((h, i) => `${i + 1}. ${h.name}`)
+    .join('\n')
+
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1024,
+    messages: [
+      {
+        role: 'user',
+        content: `Categorize the following Israeli securities/holdings into one of these categories: מניות (stocks), אגרות חוב (bonds), שקל (cash/shekel equivalents), or other.
+
+Holdings:
+${holdingsList}
+
+Respond with ONLY a JSON array of category strings in the same order as the holdings list. Example: ["מניות", "אגרות חוב", "שקל"]`
+      }
+    ]
+  })
+
+  try {
+    const content = message.content[0]
+    if (content.type === 'text') {
+      const categories = JSON.parse(content.text)
+      return categories
+    }
+  } catch (e) {
+    console.error('Failed to parse categorization response:', e)
+  }
+
+  // Fallback: simple heuristic categorization
+  return holdings.map(h => {
+    const name = h.name?.toLowerCase() || ''
+    if (name.includes('אגח') || name.includes('תל גוב') || name.includes('bond')) return 'אגרות חוב'
+    if (name.includes('כספית') || name.includes('cash') || name.includes('מזומן')) return 'שקל'
+    return 'מניות' // default to stocks
+  })
 }
 
 export async function POST(req: NextRequest) {
@@ -84,7 +127,7 @@ export async function POST(req: NextRequest) {
       let costPrice: number
       let gainFromCostNIS: number
       let gainFromCostPct: number
-      let category: string | undefined
+      let personalNote: string | undefined
       let portfolioPct: number | undefined
 
       if (isExcellenceFormat) {
@@ -97,7 +140,7 @@ export async function POST(req: NextRequest) {
         gainFromCostPct = parseFloat(gainFromCostPctStr) || 0
         gainFromCostNIS = Number(row['__EMPTY_11']) || 0
         portfolioPct = Number(row['__EMPTY_12']) || undefined
-        category = row['__EMPTY_16']?.toString().trim() || undefined
+        personalNote = row['__EMPTY_16']?.toString().trim() || undefined
       } else {
         // Bank format: original mapping
         quantity = Number(row['__EMPTY_5']) || 0
@@ -107,7 +150,7 @@ export async function POST(req: NextRequest) {
         gainFromCostNIS = Number(row['__EMPTY_11']) || 0
         const gainFromCostPctStr = row['__EMPTY_10']?.toString().trim() || '0'
         gainFromCostPct = parseFloat(gainFromCostPctStr) || 0
-        category = row['__EMPTY_12']?.toString().trim() || undefined
+        personalNote = row['__EMPTY_12']?.toString().trim() || undefined
         portfolioPct = undefined
       }
 
@@ -120,7 +163,7 @@ export async function POST(req: NextRequest) {
         costPrice,
         gainFromCostNIS,
         gainFromCostPct,
-        category: portfolioPct !== undefined && !isNaN(portfolioPct) ? undefined : category,
+        personalNote: personalNote,
         portfolioPct: portfolioPct !== undefined && !isNaN(portfolioPct) ? portfolioPct : undefined
       })
 
@@ -132,8 +175,15 @@ export async function POST(req: NextRequest) {
       totalValueNIS = calculatedTotal
     }
 
+    // Categorize holdings using Claude
+    const categories = await categorizeHoldings(holdings)
+    const categorizedHoldings = holdings.map((h, i) => ({
+      ...h,
+      category: categories[i] || 'מניות'
+    }))
+
     const result: ParseResult = {
-      holdings,
+      holdings: categorizedHoldings as Investment[],
       totalValueNIS,
       updatedAt: new Date().toISOString()
     }
