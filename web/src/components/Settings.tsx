@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Download, Users, Plus, X, Baby, Cloud, Home, Copy, Check, LogOut, Trash2, Link, RefreshCw } from 'lucide-react'
+import { Download, Mail, Users, Plus, X, Baby, Cloud, Home, Copy, Check, LogOut, Trash2, Link, RefreshCw } from 'lucide-react'
 import { AppData, FamilyMember } from '../types'
 import { cn } from '../utils'
 import { useLanguage } from '@/context/LanguageContext'
@@ -393,6 +393,7 @@ export function Settings({ data, onSaveFamilyMembers }: SettingsProps) {
   const { lang } = useLanguage()
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [emailSending, setEmailSending] = useState(false)
   const [showFamilyModal, setShowFamilyModal] = useState(false)
   const [editingMemberName, setEditingMemberName] = useState<string | null>(null)
   const [newMemberName, setNewMemberName] = useState('')
@@ -402,6 +403,22 @@ export function Settings({ data, onSaveFamilyMembers }: SettingsProps) {
   const familyMembers: FamilyMember[] = (data.familyMembers || []).map((m: any) =>
     typeof m === 'string' ? { name: m, isChild: false } : (m as FamilyMember)
   )
+
+  async function handleEmailExport() {
+    setError(null)
+    setSuccess(null)
+    setEmailSending(true)
+    try {
+      const res = await fetch('/finance-hub/api/send-backup', { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to send email')
+      setSuccess(t('settings.backup.emailSuccess', lang))
+    } catch (err) {
+      setError(`Failed to send email: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setEmailSending(false)
+    }
+  }
 
   function handleExport() {
     setError(null)
@@ -558,13 +575,23 @@ export function Settings({ data, onSaveFamilyMembers }: SettingsProps) {
           </div>
         )}
 
-        <button
-          onClick={handleExport}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-medium transition-colors"
-        >
-          <Download size={16} />
-          {t('settings.backup.exportButton', lang)}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleExport}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-medium transition-colors"
+          >
+            <Download size={16} />
+            {t('settings.backup.exportButton', lang)}
+          </button>
+          <button
+            onClick={handleEmailExport}
+            disabled={emailSending}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-gray-300 text-sm font-medium transition-colors"
+          >
+            <Mail size={16} />
+            {emailSending ? t('settings.backup.emailSending', lang) : t('settings.backup.emailButton', lang)}
+          </button>
+        </div>
       </div>
 
       {/* Info */}
