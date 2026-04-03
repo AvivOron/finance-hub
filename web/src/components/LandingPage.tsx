@@ -13,6 +13,7 @@ import {
   Users,
   RefreshCw,
   LineChart,
+  PieChart,
 } from 'lucide-react'
 import { cn } from '@/utils'
 
@@ -67,6 +68,11 @@ const features = [
     title:       { en: 'Future projections',    he: 'תחזיות עתידיות' },
     description: { en: 'Forecast your net worth years ahead. Model returns, deposits, and fees to see exactly where you\'re headed.', he: 'חזה את שווי הנטו שלך שנים קדימה. בחן תשואות, הפקדות ודמי ניהול כדי לדעת לאן אתה הולך.' },
   },
+  {
+    icon: PieChart,
+    title:       { en: 'Portfolio tracking',    he: 'מעקב תיק השקעות' },
+    description: { en: 'Upload brokerage statements to track holdings, gains, and fees. See your asset allocation at a glance.', he: 'העלה דוחות של חברות ביטחון כדי לעקוב אחרי אחזקות, רווחים ודמים. ראה את הקצאת הנכסים שלך במבט אחד.' },
+  },
 ]
 
 const steps = [
@@ -85,6 +91,10 @@ const steps = [
   {
     title:  { en: 'Track expenses & income',  he: 'עקוב אחרי הוצאות והכנסות' },
     detail: { en: 'Add recurring costs and income sources to see your true monthly cash flow.', he: 'הוסף עלויות חוזרות ומקורות הכנסה כדי לראות את תזרים המזומנים האמיתי שלך.' },
+  },
+  {
+    title:  { en: 'Upload portfolio holdings',  he: 'העלה את אחזקות התיק' },
+    detail: { en: 'Import XLSX brokerage statements to track investments, gains, and management fees in one place.', he: 'ייבא דוחות של חברות ביטחון כדי לעקוב אחרי השקעות, רווחים ודמי ניהול במקום אחד.' },
   },
 ]
 
