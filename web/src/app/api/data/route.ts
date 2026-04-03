@@ -21,11 +21,6 @@ export async function GET() {
       })
 
       const data = (userData?.data as any) ?? defaultData
-      console.log('GET /api/data - accountHoldings:', (data.accountHoldings ?? []).map((h: any) => ({
-        accountId: h.accountId,
-        totalValueNIS: h.totalValueNIS,
-        holdingsCount: h.holdings.length
-      })))
       const response: any = { ...data }
 
       // Include aiInsights in the response if available (handle gracefully if column doesn't exist yet)
@@ -48,7 +43,7 @@ export async function GET() {
       throw error
     }
   } catch (error: any) {
-    console.error('Data fetch error:', error)
+    console.error('Data fetch error')
     return NextResponse.json(defaultData)
   }
 }
@@ -63,12 +58,6 @@ export async function PUT(request: Request) {
   const data = await request.json()
 
   try {
-    console.log('PUT /api/data - accountHoldings:', data.accountHoldings?.map((h: any) => ({
-      accountId: h.accountId,
-      totalValueNIS: h.totalValueNIS,
-      holdingsCount: h.holdings.length
-    })))
-
     // Ensure user exists first (should be created by NextAuth, but be safe)
     await prisma.user.upsert({
       where: { id: effectiveUserId },
@@ -86,7 +75,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Data save error:', error)
+    console.error('Data save error')
     if (error.code === 'P2003') {
       // Foreign key constraint - user doesn't exist
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
