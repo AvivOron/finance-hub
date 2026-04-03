@@ -71,7 +71,7 @@ const features = [
   {
     icon: PieChart,
     title:       { en: 'Portfolio tracking',    he: 'מעקב תיק השקעות' },
-    description: { en: 'Upload brokerage statements to track holdings, gains, and fees. See your asset allocation at a glance.', he: 'העלה דוחות של חברות ביטחון כדי לעקוב אחרי אחזקות, רווחים ודמים. ראה את הקצאת הנכסים שלך במבט אחד.' },
+    description: { en: 'Upload brokerage statements to track holdings, gains, and fees. See your asset allocation at a glance.', he: 'העלה דוחות של חשבונות השקעות כדי לעקוב אחרי אחזקות, רווחים ודמים. ראה את הקצאת הנכסים שלך במבט אחד.' },
   },
 ]
 
