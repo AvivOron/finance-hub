@@ -21,16 +21,24 @@ export async function GET() {
       })
 
       const data = (userData?.data as any) ?? defaultData
+      console.log('GET /api/data - accountHoldings:', (data.accountHoldings ?? []).map((h: any) => ({
+        accountId: h.accountId,
+        totalValueNIS: h.totalValueNIS,
+        holdingsCount: h.holdings.length
+      })))
+      const response: any = { ...data }
+
       // Include aiInsights in the response if available (handle gracefully if column doesn't exist yet)
       try {
         const aiInsights = (userData as any)?.aiInsights
         if (aiInsights) {
-          return NextResponse.json({ ...data, aiInsights })
+          response.aiInsights = aiInsights
         }
       } catch {
         // aiInsights column might not exist yet in migration
       }
-      return NextResponse.json(data)
+
+      return NextResponse.json(response)
     } catch (error: any) {
       // If the column doesn't exist yet, just return data without insights
       if (error.code === 'P2022' || error.code === 'P2021') {
@@ -55,6 +63,12 @@ export async function PUT(request: Request) {
   const data = await request.json()
 
   try {
+    console.log('PUT /api/data - accountHoldings:', data.accountHoldings?.map((h: any) => ({
+      accountId: h.accountId,
+      totalValueNIS: h.totalValueNIS,
+      holdingsCount: h.holdings.length
+    })))
+
     // Ensure user exists first (should be created by NextAuth, but be safe)
     await prisma.user.upsert({
       where: { id: effectiveUserId },
@@ -67,6 +81,8 @@ export async function PUT(request: Request) {
       update: { data },
       create: { userId: effectiveUserId, data }
     })
+
+    console.log('PUT /api/data - saved successfully')
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

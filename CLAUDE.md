@@ -25,13 +25,16 @@ npm run typecheck  # Type-check
 - `Income.tsx` → income sources + Israeli tax calculator
 - `SnapshotEntry.tsx`, `History.tsx`, `Expenses.tsx`
 - `Insights.tsx` → AI insights
+- `Investments.tsx` → portfolio holdings, upload XLSX, track fees
 
 ## Types (`web/src/types/`)
 - `Account`: id, name, type ('asset'|'liability'), kind?, owner?
 - `MonthlySnapshot`: id, date (YYYY-MM), entries[]
-- `RecurringExpense`: id, name, amount, category, billingCycle
+- `RecurringExpense`: id, name, amount, category, billingCycle, owner?, active
 - `IncomeSource`: id, name, type, grossAmount, netAmount, billingCycle, owner?, notes?, active
-- `ExpenseCategory`: housing, childcare, subscriptions, insurance, utilities, transport, pets, other
+- `ExpenseCategory`: housing, childcare, subscriptions, insurance, utilities, transport, pets, groceries, lifestyle, other
+- `Investment`: paperNumber, name, quantity, lastPrice, valueNIS, costPrice, gainFromCostNIS, gainFromCostPct, category?, managementFee?
+- `AccountHoldings`: accountId, updatedAt, totalValueNIS, holdings[]
 
 ## Conventions
 - **Currency**: NIS (₪) → `formatCurrency()` + `useCurrency()`
@@ -39,3 +42,23 @@ npm run typecheck  # Type-check
 - **IDs**: `generateId()`
 - **Style**: dark (#09090f, #14141f cards, indigo-500), `cn()` merge
 - **i18n**: `t('key', lang)` / `tn('key', count, lang)` from `@/translations`
+
+## API Routes
+- `GET/POST /api/data` — Load/save AppData
+- `POST /api/insights` — Generate AI insights (Claude Sonnet)
+- `POST /api/translate-insights` — Translate insights to/from Hebrew (Claude Haiku)
+- `POST /api/save-insights` — Persist insights to DB
+- `POST /api/parse-investments` — Parse XLSX holdings file → Investment[]
+- `GET /api/household` — Load/manage household & invite tokens
+- `POST /api/send-backup` — Email backup via Resend
+- `GET/POST /api/tour` — Onboarding tour state
+
+## Data Model
+- **AppData** lives as JSON in `UserData.data` (per user)
+- Household owner's `UserData` is the source of truth
+- Family members access owner's data via household relation
+- Schema is fully typed via `types/index.ts`
+
+## Relevant URLs
+- Email domain: `avivo.dev` (used for Resend no-reply emails)
+- Prisma setup: Postgres with connection pooling via Vercel

@@ -41,6 +41,7 @@ export interface AppData {
   familyMembers?: FamilyMember[]
   expenses?: RecurringExpense[]
   income?: IncomeSource[]
+  accountHoldings?: AccountHoldings[]
   aiInsights?: {
     content: string
     language: 'en' | 'he'
@@ -94,4 +95,27 @@ export type Page =
   | 'income'
   | 'insights'
   | 'projections'
+  | 'investments'
   | 'settings'
+
+export interface Investment {
+  paperNumber: string // מספר נייר - Israeli security identifier
+  name: string // שם נייר
+  quantity: number // כמות בתיק
+  lastPrice: number // שער אחרון
+  valueNIS: number // שווי אחזקה (₪)
+  costPrice: number // שער עלות
+  gainFromCostNIS: number // שינוי מעלות בש"ח
+  gainFromCostPct: number // שינוי מעלות %
+  category?: string // הערה אישית (e.g. מניות, אג"ח)
+  portfolioPct?: number // נתח מהתיק (excellence only)
+  managementFee?: number // % annual management fee
+  feeSource?: string // where fee was found
+}
+
+export interface AccountHoldings {
+  accountId: string
+  updatedAt: string // ISO timestamp from file
+  totalValueNIS: number
+  holdings: Investment[]
+}

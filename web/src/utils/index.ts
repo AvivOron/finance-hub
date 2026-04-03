@@ -30,9 +30,10 @@ export function formatMonthLabel(date: string): string {
   })
 }
 
-export function formatMonthFull(date: string): string {
+export function formatMonthFull(date: string, lang?: string): string {
   const [year, month] = date.split('-')
-  return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('en-US', {
+  const locale = lang === 'he' ? 'he-IL' : 'en-US'
+  return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString(locale, {
     month: 'long',
     year: 'numeric'
   })

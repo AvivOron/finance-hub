@@ -70,32 +70,46 @@ function renderMarkdown(text: string, lang?: string): React.ReactNode[] {
         i++
       }
       const nonSeparator = tableLines.filter(l => !isSeparatorRow(l))
+      if (nonSeparator.length < 1) {
+        i++
+        continue
+      }
+
       const [headerRow, ...bodyRows] = nonSeparator
       const parseRow = (row: string) =>
-        row.trim().slice(1, -1).split('|').map(cell => cell.trim())
+        row.trim().slice(1, -1).split('|').map(cell => cell.trim()).filter(cell => cell !== '')
+
+      const headerCells = parseRow(headerRow)
+      if (headerCells.length === 0) {
+        i++
+        continue
+      }
 
       nodes.push(
-        <div key={i} className="overflow-x-auto my-3">
+        <div key={`table-${i}`} className="overflow-x-auto my-3">
           <table className="w-full text-sm border-collapse" dir={isRtl ? 'rtl' : 'ltr'}>
             <thead>
               <tr>
-                {parseRow(headerRow).map((cell, j) => (
-                  <th key={j} className="text-gray-400 font-medium px-3 py-1.5 border-b border-white/10 text-start">
+                {headerCells.map((cell, j) => (
+                  <th key={j} className="text-gray-300 font-semibold px-3 py-2 border-b border-indigo-500/20 bg-indigo-500/5 text-start">
                     {renderInline(cell)}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {bodyRows.map((row, ri) => (
-                <tr key={ri} className="border-b border-white/5">
-                  {parseRow(row).map((cell, j) => (
-                    <td key={j} className="text-gray-300 px-3 py-1.5">
-                      {renderInline(cell)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {bodyRows.map((row, ri) => {
+                const cells = parseRow(row)
+                return (
+                  <tr key={ri} className="border-b border-white/5 hover:bg-white/2">
+                    {cells.map((cell, j) => (
+                      <td key={j} className="text-gray-300 px-3 py-2">
+                        {renderInline(cell)}
+                      </td>
+                    ))}
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

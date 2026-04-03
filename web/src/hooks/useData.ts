@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { AppData, Account, MonthlySnapshot, RecurringExpense, IncomeSource, FamilyMember } from '../types'
+import { AppData, Account, MonthlySnapshot, RecurringExpense, IncomeSource, FamilyMember, AccountHoldings } from '../types'
 
 const defaultData: AppData = { accounts: [], snapshots: [], familyMembers: [] }
 
@@ -74,5 +74,23 @@ export function useData() {
     []
   )
 
-  return { data, loading, saveAccounts, saveSnapshots, saveFamilyMembers, saveExpenses, saveIncome, saveAiInsights }
+  const saveAccountHoldings = useCallback(
+    async (accountHoldings: AccountHoldings[]): Promise<void> => {
+      // Fetch latest data from server to avoid overwriting other fields
+      const res = await fetch('/finance-hub/api/data')
+      const latestData = await res.json()
+      const mergedData = { ...latestData, accountHoldings }
+      await saveAll(mergedData)
+    },
+    [saveAll]
+  )
+
+  const refreshData = useCallback(async (): Promise<void> => {
+    const res = await fetch('/finance-hub/api/data')
+    const d = await res.json()
+    console.log('refreshData - fetched from API, setting state:', d.accountHoldings?.map((h: any) => ({ accountId: h.accountId, total: h.totalValueNIS })))
+    setData(d && d.accounts ? d : defaultData)
+  }, [])
+
+  return { data, loading, saveAccounts, saveSnapshots, saveFamilyMembers, saveExpenses, saveIncome, saveAiInsights, saveAccountHoldings, refreshData }
 }

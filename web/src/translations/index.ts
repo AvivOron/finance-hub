@@ -9,8 +9,9 @@ const translations: Record<string, { en: string; he: string }> = {
   'nav.expenses': { en: 'Expenses', he: 'הוצאות' },
   'nav.income': { en: 'Income', he: 'הכנסות' },
   'nav.insights': { en: 'AI Insights', he: 'תובנות AI' },
-  'nav.settings': { en: 'Settings', he: 'הגדרות' },
   'nav.projections': { en: 'Projections', he: 'תחזיות' },
+  'nav.investments': { en: 'Investments', he: 'השקעות' },
+  'nav.settings': { en: 'Settings', he: 'הגדרות' },
   'nav.section.tracking': { en: 'Worth Tracking', he: 'מעקב נכסים' },
   'nav.section.management': { en: 'Management', he: 'ניהול' },
   'nav.signOut': { en: 'Sign out', he: 'התנתקות' },
@@ -121,6 +122,7 @@ const translations: Record<string, { en: string; he: string }> = {
   'snapshot.empty.title': { en: 'No accounts set up', he: 'אין חשבונות מוגדרים' },
   'snapshot.empty.message': { en: 'Add some accounts first before recording a snapshot.', he: 'הוסף חשבונות לפני תיעוד.' },
   'snapshot.tooltip.openVendor': { en: 'Open vendor website', he: 'פתח אתר ספק' },
+  'snapshot.copyFromLast': { en: 'Copy from last snapshot', he: 'העתק מהחודש הקודם' },
 
   // History
   'history.title': { en: 'History', he: 'היסטוריה' },
@@ -322,6 +324,24 @@ const translations: Record<string, { en: string; he: string }> = {
   'projections.empty.sub': { en: 'Record a snapshot to see projections', he: 'תעד תיעוד חודשי כדי לראות תחזיות' },
   'projections.feeImpact.title': { en: 'Fee Impact Over {n} Years', he: 'השפעת דמי ניהול על פני {n} שנים' },
   'projections.feeImpact.body': { en: 'Fees will cost you approximately {cost} in foregone growth — the difference between {without} (no fees) vs {with} (with fees).', he: 'דמי הניהול יעלו לך כ-{cost} בצמיחה שהוחמצה — ההפרש בין {without} (ללא דמי ניהול) לבין {with} (עם דמי ניהול).' },
+
+  // Investments
+  'holdings.title': { en: 'Investment Holdings', he: 'תיק השקעות' },
+  'holdings.empty': { en: 'No investment accounts', he: 'אין חשבונות השקעות' },
+  'holdings.empty_account': { en: 'No holdings uploaded yet. Upload an xlsx file to get started.', he: 'עדיין לא הועלו אחזקות. העלה קובץ xlsx כדי להתחיל.' },
+  'holdings.upload': { en: 'Upload xlsx', he: 'העלה xlsx' },
+  'holdings.uploaded': { en: 'Holdings uploaded', he: 'אחזקות הועלו' },
+  'holdings.count': { en: 'holdings', he: 'אחזקות' },
+  'holdings.enrich_fees': { en: 'Enrich Fees', he: 'מצא דמי ניהול' },
+  'holdings.fees_enriched': { en: 'Management fees populated', he: 'דמי ניהול מלאו' },
+  'holdings.updated': { en: 'Updated', he: 'עודכן' },
+  'holdings.name': { en: 'Security', he: 'ניירות' },
+  'holdings.paper_num': { en: 'Paper #', he: 'מספר נייר' },
+  'holdings.qty': { en: 'Quantity', he: 'כמות' },
+  'holdings.price': { en: 'Price', he: 'מחיר' },
+  'holdings.value': { en: 'Value', he: 'שווי' },
+  'holdings.gain': { en: 'Gain', he: 'רווח' },
+  'holdings.fee': { en: 'Fee %/yr', he: 'דמים %/שנה' },
 
   // Common
   'common.loading': { en: 'Loading…', he: 'טוען...' },

@@ -83,6 +83,33 @@ function buildPrompt(data: AppData, currency: string, language: string = 'en'): 
     typeof m === 'string' ? m : `${m.name}${m.isChild ? ' (child)' : ''}`
   ).join(', ')
 
+  // Holdings summary
+  let holdingsSummary = ''
+  const accountHoldings = data.accountHoldings ?? []
+  if (accountHoldings.length > 0) {
+    holdingsSummary = accountHoldings.map((ah) => {
+      const account = data.accounts.find((a) => a.id === ah.accountId)
+      const accountName = account?.name ?? 'Unknown'
+      const holdings = ah.holdings
+        .map((h) => {
+          let line = `    - ${h.name} (paper #${h.paperNumber}): ${h.quantity.toLocaleString()} shares @ ${currencySymbol}${h.lastPrice.toLocaleString()}`
+          line += ` = ${currencySymbol}${h.valueNIS.toLocaleString()}`
+          if (h.gainFromCostPct !== 0) {
+            line += ` (${h.gainFromCostPct > 0 ? '+' : ''}${h.gainFromCostPct.toFixed(2)}% gain, ${currencySymbol}${h.gainFromCostNIS.toLocaleString()})`
+          }
+          if (h.managementFee !== undefined) {
+            line += ` [fee: ${h.managementFee.toFixed(2)}%/year]`
+          }
+          if (h.category) {
+            line += ` (${h.category})`
+          }
+          return line
+        })
+        .join('\n')
+      return `  **${accountName}** (total: ${currencySymbol}${ah.totalValueNIS.toLocaleString()}):\n${holdings}`
+    }).join('\n\n')
+  }
+
   return `You are a personal financial advisor. Analyze the following financial data and provide clear, actionable insights and recommendations. Be specific, reference actual numbers from the data, and prioritize the most impactful advice. Use a friendly but professional tone. The user's currency is ${currency} (${currencySymbol}).${languageInstruction}
 
 ## Financial Data
@@ -113,6 +140,10 @@ ${expenseSummary || '  None'}
   Expenses: ${currencySymbol}${totalMonthlyExpenses.toLocaleString()}
   Surplus/deficit: ${currencySymbol}${(totalMonthlyNet - totalMonthlyExpenses).toLocaleString()}
 ${savingsRate !== null ? `  Savings rate: ${savingsRate}%` : ''}
+${holdingsSummary ? `
+
+**Investment Holdings:**
+${holdingsSummary}` : ''}
 
 ## Instructions
 
@@ -157,7 +188,7 @@ export async function POST(request: Request) {
 
   const stream = await client.messages.stream({
     model: 'claude-opus-4-6',
-    max_tokens: 4096,
+    max_tokens: 8192,
     messages: [{ role: 'user', content: prompt }]
   })
 

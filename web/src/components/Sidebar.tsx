@@ -35,7 +35,7 @@ interface SidebarProps {
   }
 }
 
-type TrackingPage = 'dashboard' | 'accounts' | 'snapshot' | 'history' | 'projections'
+type TrackingPage = 'dashboard' | 'accounts' | 'snapshot' | 'history' | 'projections' | 'investments'
 type ExpensePage = 'expenses' | 'income' | 'insights'
 type SettingPage = 'settings'
 
@@ -44,7 +44,8 @@ const trackingLabelMap: Record<TrackingPage, string> = {
   'accounts': 'nav.accounts',
   'snapshot': 'nav.snapshot',
   'history': 'nav.history',
-  'projections': 'nav.projections'
+  'projections': 'nav.projections',
+  'investments': 'nav.investments'
 }
 
 const expenseLabelMap: Record<ExpensePage, string> = {
@@ -62,7 +63,8 @@ const trackingItems: { id: TrackingPage; icon: React.ElementType }[] = [
   { id: 'accounts', icon: Wallet },
   { id: 'snapshot', icon: PlusCircle },
   { id: 'history', icon: History },
-  { id: 'projections', icon: LineChart }
+  { id: 'projections', icon: LineChart },
+  { id: 'investments', icon: TrendingUp }
 ]
 
 const expenseItems: { id: ExpensePage; icon: React.ElementType }[] = [

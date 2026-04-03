@@ -11,6 +11,7 @@ import { Expenses } from '@/components/Expenses'
 import { Income } from '@/components/Income'
 import { Insights } from '@/components/Insights'
 import { Projections } from '@/components/Projections'
+import { Investments } from '@/components/Investments'
 import { OnboardingModal } from '@/components/OnboardingModal'
 import { TourOverlay } from '@/components/TourOverlay'
 import { useData } from '@/hooks/useData'
@@ -39,7 +40,9 @@ export function AppClient({ user }: AppClientProps) {
     saveFamilyMembers,
     saveExpenses,
     saveIncome,
-    saveAiInsights
+    saveAiInsights,
+    saveAccountHoldings,
+    refreshData
   } = useData()
   const { lang } = useLanguage()
 
@@ -164,6 +167,9 @@ export function AppClient({ user }: AppClientProps) {
               onSave={saveSnapshots}
               editingSnapshotId={editingSnapshotId}
               onEditDone={editingSnapshotId ? handleSnapshotEditDone : undefined}
+              data={data}
+              onRefreshData={refreshData}
+              onSaveAccountHoldings={saveAccountHoldings}
             />
           )}
           {page === 'accounts' && (
@@ -199,6 +205,11 @@ export function AppClient({ user }: AppClientProps) {
           )}
           {page === 'projections' && (
             <Projections data={data} />
+          )}
+          {page === 'investments' && (
+            <Investments data={data} onSave={async (newData) => {
+              if (newData.accountHoldings) await saveAccountHoldings(newData.accountHoldings)
+            }} />
           )}
           {page === 'settings' && (
             <Settings data={data} onSaveFamilyMembers={saveFamilyMembers} />

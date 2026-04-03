@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, Save, AlertCircle, ExternalLink } from 'lucide-react'
-import { Account, MonthlySnapshot, SnapshotEntry as SnapshotEntryType } from '../types'
+import { useState, useEffect, useRef } from 'react'
+import { ChevronLeft, ChevronRight, Save, AlertCircle, ExternalLink, Upload } from 'lucide-react'
+import { Account, MonthlySnapshot, SnapshotEntry as SnapshotEntryType, AppData, AccountHoldings } from '../types'
 import { getCurrentMonth, generateId, formatMonthFull, formatCurrency, cn } from '../utils'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -13,8 +13,12 @@ interface SnapshotEntryProps {
   accounts: Account[]
   snapshots: MonthlySnapshot[]
   onSave: (snapshots: MonthlySnapshot[]) => Promise<void>
+  onSaveWithHoldings?: (snapshots: MonthlySnapshot[], holdings?: AccountHoldings[]) => Promise<void>
   editingSnapshotId?: string | null
   onEditDone?: () => void
+  data?: AppData
+  onRefreshData?: () => Promise<void>
+  onSaveAccountHoldings?: (holdings: AccountHoldings[]) => Promise<void>
 }
 
 function changeMonth(date: string, delta: number): string {
@@ -27,8 +31,12 @@ export function SnapshotEntry({
   accounts,
   snapshots,
   onSave,
+  onSaveWithHoldings,
   editingSnapshotId,
-  onEditDone
+  onEditDone,
+  data,
+  onRefreshData,
+  onSaveAccountHoldings
 }: SnapshotEntryProps) {
   const { currency } = useCurrency()
   const { lang } = useLanguage()
@@ -39,12 +47,22 @@ export function SnapshotEntry({
   const [balances, setBalances] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [uploadingFieldId, setUploadingFieldId] = useState<string | null>(null)
+  const fileInputRefs = useRef<Record<string, HTMLInputElement>>({})
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const skipNextReInitRef = useRef(false)
 
   const existingSnapshot = editingSnapshotId
     ? snapshots.find((s) => s.id === editingSnapshotId)
     : snapshots.find((s) => s.date === month)
 
+  // Initialize balances from snapshot
   useEffect(() => {
+    if (skipNextReInitRef.current) {
+      skipNextReInitRef.current = false
+      return
+    }
+
     const snap = editingSnapshotId
       ? snapshots.find((s) => s.id === editingSnapshotId)
       : snapshots.find((s) => s.date === month)
@@ -89,6 +107,109 @@ export function SnapshotEntry({
   const totalAssets = assets.reduce((s, a) => s + getBalance(a), 0)
   const totalLiabilities = liabilities.reduce((s, a) => s + getBalance(a), 0)
   const netWorth = totalAssets - totalLiabilities
+
+  function copyFromLast() {
+    // Find the most recent snapshot (excluding current month if editing)
+    const sorted = [...snapshots].sort((a, b) => b.date.localeCompare(a.date))
+    const lastSnapshot = sorted.find((s) => s.date !== month)
+
+    if (!lastSnapshot) return
+
+    // Reuse the same balance initialization logic
+    const init: Record<string, string> = {}
+    for (const e of lastSnapshot.entries) {
+      const account = accounts.find((a) => a.id === e.accountId)
+      const kindConfig =
+        account?.kind && account.kind !== 'custom' ? ACCOUNT_KIND_CONFIG[account.kind] : null
+      if (kindConfig?.subLabels?.length) {
+        for (const sub of kindConfig.subLabels) {
+          init[e.accountId + ':' + sub] = String(e.subBalances?.[sub] ?? 0)
+        }
+      } else {
+        init[e.accountId] = String(e.balance)
+      }
+    }
+    setBalances(init)
+  }
+
+  async function handleFileUpload(accountId: string, subLabel: string | null, file: File) {
+    setUploadingFieldId(`${accountId}:${subLabel || 'single'}`)
+    setUploadError(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/finance-hub/api/parse-investments', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to parse file')
+      }
+
+      const { totalValueNIS, holdings, updatedAt } = await response.json()
+      console.log('Upload to accountId:', accountId, 'totalValueNIS:', totalValueNIS)
+
+      // Update the balance field
+      const fieldKey = subLabel ? `${accountId}:${subLabel}` : accountId
+      setBalances((prev) => ({
+        ...prev,
+        [fieldKey]: String(totalValueNIS)
+      }))
+
+      // Save accountHoldings immediately
+      if (onSaveAccountHoldings) {
+        // Build a map of all known fees across all accounts
+        const allKnownFees = new Map<string, number>()
+        data?.accountHoldings?.forEach((ah) => {
+          ah.holdings.forEach((holding) => {
+            if (holding.managementFee !== undefined) {
+              allKnownFees.set(holding.paperNumber, holding.managementFee)
+            }
+          })
+        })
+
+        // Preserve existing fees for papers that already exist (including from other accounts)
+        const holdingsWithPreservedFees = holdings.map((holding) => ({
+          ...holding,
+          managementFee: allKnownFees.has(holding.paperNumber)
+            ? allKnownFees.get(holding.paperNumber)
+            : holding.managementFee
+        }))
+
+        const newHoldings: AccountHoldings = {
+          accountId,
+          totalValueNIS,
+          holdings: holdingsWithPreservedFees,
+          updatedAt
+        }
+        const updatedHoldings = [
+          ...(data?.accountHoldings || []).filter((h) => h.accountId !== accountId),
+          newHoldings
+        ]
+
+        await onSaveAccountHoldings(updatedHoldings)
+        console.log('Saved holdings with total:', totalValueNIS)
+
+        // Update the balance field display with the new value
+        const fieldKey = subLabel ? `${accountId}:${subLabel}` : accountId
+        setBalances((prev) => ({
+          ...prev,
+          [fieldKey]: String(totalValueNIS)
+        }))
+
+        // Tell useEffect to skip re-init on next run (since snapshots might change)
+        skipNextReInitRef.current = true
+      }
+    } catch (error) {
+      console.error('Upload error:', error)
+      setUploadError(error instanceof Error ? error.message : 'Upload failed')
+    } finally {
+      setUploadingFieldId(null)
+    }
+  }
 
   async function handleSave() {
     setSaving(true)
@@ -170,27 +291,66 @@ export function SnapshotEntry({
 
         {/* Month picker */}
         <div className="bg-[#14141f] border border-white/5 rounded-xl p-4 flex items-center justify-between">
-          <button
-            onClick={() => !editingSnapshotId && setMonth(changeMonth(month, -1))}
-            disabled={!!editingSnapshotId}
-            className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <div className="text-center">
-            <p className="text-base font-semibold text-white">{formatMonthFull(month)}</p>
-            {existingSnapshot && (
-              <p className="text-xs text-amber-400 mt-0.5">{t('snapshot.existingBadge', lang)}</p>
-            )}
-          </div>
-          <button
-            onClick={() => !editingSnapshotId && setMonth(changeMonth(month, 1))}
-            disabled={!!editingSnapshotId}
-            className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <ChevronRight size={18} />
-          </button>
+          {lang === 'he' ? (
+            <>
+              <button
+                onClick={() => !editingSnapshotId && setMonth(changeMonth(month, -1))}
+                disabled={!!editingSnapshotId}
+                className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronRight size={18} />
+              </button>
+              <div className="text-center">
+                <p className="text-base font-semibold text-white">{formatMonthFull(month, lang)}</p>
+                {existingSnapshot && (
+                  <p className="text-xs text-amber-400 mt-0.5">{t('snapshot.existingBadge', lang)}</p>
+                )}
+              </div>
+              <button
+                onClick={() => !editingSnapshotId && setMonth(changeMonth(month, 1))}
+                disabled={!!editingSnapshotId}
+                className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={18} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => !editingSnapshotId && setMonth(changeMonth(month, -1))}
+                disabled={!!editingSnapshotId}
+                className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <div className="text-center">
+                <p className="text-base font-semibold text-white">{formatMonthFull(month, lang)}</p>
+                {existingSnapshot && (
+                  <p className="text-xs text-amber-400 mt-0.5">{t('snapshot.existingBadge', lang)}</p>
+                )}
+              </div>
+              <button
+                onClick={() => !editingSnapshotId && setMonth(changeMonth(month, 1))}
+                disabled={!!editingSnapshotId}
+                className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </>
+          )}
         </div>
+
+        {/* Copy from last button - only for new snapshots */}
+        {!existingSnapshot && snapshots.length > 0 && Object.keys(balances).length === 0 && (
+          <div className="text-center">
+            <button
+              onClick={copyFromLast}
+              className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+            >
+              {t('snapshot.copyFromLast', lang)}
+            </button>
+          </div>
+        )}
 
         {assets.length > 0 && (
           <AccountSection
@@ -202,6 +362,9 @@ export function SnapshotEntry({
             onChange={(id, val) => setBalances({ ...balances, [id]: val })}
             snapshot={existingSnapshot}
             lang={lang}
+            onFileUpload={handleFileUpload}
+            uploadingFieldId={uploadingFieldId}
+            fileInputRefs={fileInputRefs}
           />
         )}
 
@@ -215,7 +378,16 @@ export function SnapshotEntry({
             onChange={(id, val) => setBalances({ ...balances, [id]: val })}
             snapshot={existingSnapshot}
             lang={lang}
+            onFileUpload={handleFileUpload}
+            uploadingFieldId={uploadingFieldId}
+            fileInputRefs={fileInputRefs}
           />
+        )}
+
+        {uploadError && (
+          <div className="bg-red-500/10 border border-red-500/30 text-red-300 rounded p-3 text-sm">
+            {uploadError}
+          </div>
         )}
 
         {/* Summary + Save */}
@@ -271,7 +443,10 @@ function AccountSection({
   currencySymbol,
   onChange,
   snapshot,
-  lang
+  lang,
+  onFileUpload,
+  uploadingFieldId,
+  fileInputRefs
 }: {
   title: string
   color: 'emerald' | 'red'
@@ -281,6 +456,9 @@ function AccountSection({
   onChange: (id: string, val: string) => void
   snapshot?: MonthlySnapshot
   lang: string
+  onFileUpload?: (accountId: string, subLabel: string | null, file: File) => Promise<void>
+  uploadingFieldId?: string | null
+  fileInputRefs?: React.MutableRefObject<Record<string, HTMLInputElement>>
 }) {
   return (
     <div className="bg-[#14141f] border border-white/5 rounded-xl overflow-hidden">
@@ -327,21 +505,51 @@ function AccountSection({
                 )}
               </div>
               {kindConfig.subLabels.map((sub) => (
-                <div key={sub} className="flex items-center justify-between pl-5">
+                <div key={sub} className="flex items-center justify-between">
                   <span className="text-xs text-gray-500 capitalize">{sub}</span>
-                  <div className={cn('relative', lang === 'he' ? 'right-3 pr-7' : 'left-3 pl-7')}>
-                    <span className={cn('absolute top-1/2 -translate-y-1/2 text-gray-500 text-sm', lang === 'he' ? 'right-3' : 'left-3')}>
-                      {currencySymbol}
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={balances[account.id + ':' + sub] ?? ''}
-                      onChange={(e) => onChange(account.id + ':' + sub, e.target.value)}
-                      placeholder="0"
-                      className={cn('w-32 sm:w-40 bg-[#1c1c2a] border border-white/10 rounded-lg py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors text-right', lang === 'he' ? 'pr-3 pl-7' : 'pl-7 pr-3')}
-                    />
+                  <div className="flex items-center gap-3">
+                    <div className={cn('relative', lang === 'he' ? 'right-3 pr-7' : 'left-3 pl-7')}>
+                      <span className={cn('absolute top-1/2 -translate-y-1/2 text-gray-500 text-sm', lang === 'he' ? 'right-3' : 'left-3')}>
+                        {currencySymbol}
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={balances[account.id + ':' + sub] ?? ''}
+                        onChange={(e) => onChange(account.id + ':' + sub, e.target.value)}
+                        placeholder="0"
+                        className={cn('w-32 sm:w-40 bg-[#1c1c2a] border border-white/10 rounded-lg py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors text-right', lang === 'he' ? 'pr-3 pl-7' : 'pl-7 pr-3')}
+                      />
+                    </div>
+                    {sub === 'investments' && onFileUpload && fileInputRefs ? (
+                      <>
+                        <button
+                          onClick={() => fileInputRefs.current[`${account.id}:${sub}`]?.click()}
+                          disabled={uploadingFieldId === `${account.id}:${sub}`}
+                          className="p-2 rounded hover:bg-indigo-600/30 text-indigo-400 hover:text-indigo-300 transition disabled:opacity-50"
+                          title={t('holdings.upload', lang)}
+                        >
+                          <Upload size={16} />
+                        </button>
+                        <input
+                          ref={(el) => {
+                            if (el && fileInputRefs.current) fileInputRefs.current[`${account.id}:${sub}`] = el
+                          }}
+                          type="file"
+                          accept=".xlsx,.xls"
+                          onChange={(e) => {
+                            const file = e.currentTarget.files?.[0]
+                            if (file && onFileUpload) {
+                              onFileUpload(account.id, sub, file)
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </>
+                    ) : (
+                      <div className="w-8" />
+                    )}
                   </div>
                 </div>
               ))}
@@ -380,19 +588,49 @@ function AccountSection({
                   <p className="text-xs text-gray-600 truncate mt-0.5">{account.notes}</p>
                 )}
               </div>
-              <div className={cn('relative', lang === 'he' ? 'right-3 pr-7' : 'left-3 pl-7')}>
-                <span className={cn('absolute top-1/2 -translate-y-1/2 text-gray-500 text-sm', lang === 'he' ? 'right-3' : 'left-3')}>
-                  {currencySymbol}
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={balances[account.id] ?? ''}
-                  onChange={(e) => onChange(account.id, e.target.value)}
-                  placeholder="0"
-                  className={cn('w-32 sm:w-40 bg-[#1c1c2a] border border-white/10 rounded-lg py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors text-right', lang === 'he' ? 'pr-3 pl-7' : 'pl-7 pr-3')}
-                />
+              <div className="flex items-center gap-3">
+                <div className={cn('relative flex items-center', lang === 'he' ? 'right-3 pr-7' : 'left-3 pl-7')}>
+                  <span className={cn('absolute top-1/2 -translate-y-1/2 text-gray-500 text-sm', lang === 'he' ? 'right-3' : 'left-3')}>
+                    {currencySymbol}
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={balances[account.id] ?? ''}
+                    onChange={(e) => onChange(account.id, e.target.value)}
+                    placeholder="0"
+                    className={cn('w-32 sm:w-40 bg-[#1c1c2a] border border-white/10 rounded-lg py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors text-right', lang === 'he' ? 'pr-3 pl-7' : 'pl-7 pr-3')}
+                  />
+                </div>
+                {(account.kind === 'brokerage' || account.kind === 'bank') && onFileUpload && fileInputRefs ? (
+                  <>
+                    <button
+                      onClick={() => fileInputRefs.current[account.id]?.click()}
+                      disabled={uploadingFieldId === `${account.id}:single`}
+                      className="p-2 rounded hover:bg-indigo-600/30 text-indigo-400 hover:text-indigo-300 transition disabled:opacity-50"
+                      title={t('holdings.upload', lang)}
+                    >
+                      <Upload size={16} />
+                    </button>
+                    <input
+                      ref={(el) => {
+                        if (el && fileInputRefs.current) fileInputRefs.current[account.id] = el
+                      }}
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={(e) => {
+                        const file = e.currentTarget.files?.[0]
+                        if (file && onFileUpload) {
+                          onFileUpload(account.id, null, file)
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </>
+                ) : (
+                  <div className="w-8" />
+                )}
               </div>
             </div>
           )

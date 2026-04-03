@@ -23,6 +23,12 @@ Built with Next.js + React + TypeScript, with Prisma/Postgres for storage and AI
 - **Expense Categories** — Pre-built categories with color-coded icons
 - **Expense Dashboard** — Summary cards with total monthly/yearly expenses; bar chart breakdown by category
 
+**Investment Portfolio**
+- **Holdings Dashboard** — Upload XLSX brokerage statements to track holdings
+- **Holdings Table** — Security name, quantity, price, value, gains, management fees
+- **Portfolio Analysis** — See asset allocation, gains/losses by holding, and portfolio composition
+- **Fee Tracking** — Record and edit management fees for each security
+
 **AI Insights**
 - **Financial Analysis** — Claude-powered insights summarizing your financial picture
 - **Streaming** — Live streaming animation for both generation and when loading persisted insights
@@ -62,7 +68,7 @@ web/
 ├── src/
 │   ├── app/                 # Next.js App Router pages & API routes
 │   │   ├── app/             # Main app page (AppClient)
-│   │   ├── api/             # API routes (data, insights, save, translate)
+│   │   ├── api/             # API routes (data, insights, parse-investments, enrich-holdings, etc.)
 │   │   └── invite/          # Invite flow
 │   ├── components/          # React components
 │   │   ├── Dashboard.tsx
@@ -72,6 +78,7 @@ web/
 │   │   ├── History.tsx
 │   │   ├── SnapshotEntry.tsx
 │   │   ├── Insights.tsx
+│   │   ├── Investments.tsx  # Portfolio holdings, upload, fee tracking
 │   │   ├── Settings.tsx
 │   │   └── Sidebar.tsx
 │   ├── context/             # CurrencyContext, LanguageContext
@@ -80,6 +87,21 @@ web/
 │   └── hooks/               # useData
 └── prisma/                  # Schema + migrations
 ```
+
+## Roadmap
+
+Potential enhancements (roughly in priority order):
+- Budget vs. actual tracking with category-level analysis
+- Investment portfolio dashboard (holdings, asset allocation, returns)
+- Financial goals with progress tracking
+- Monthly cash flow analysis (inflows vs. outflows)
+- Debt repayment calculator with multiple payoff strategies
+- Spending patterns & anomaly detection
+- Transaction-level logging (requires schema changes)
+- Tax planning & reporting enhancements
+- Bill reminders & payment tracking
+
+See [feature roadmap](/.claude/projects/-Users-aviv-Code-finance-hub/memory/feature_roadmap.md) for full details.
 
 ## License
 
