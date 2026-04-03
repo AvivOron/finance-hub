@@ -48,8 +48,16 @@ export function Investments({ data, onSave }: InvestmentsProps) {
     setMessage(null)
 
     try {
+      const account = data.accounts.find((a) => a.id === accountId)
+      const vendor = account?.kind === 'bank' ? account?.bankVendor : account?.brokerageVendor
+
+      if (!vendor) {
+        throw new Error('Vendor not configured for this account')
+      }
+
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('vendor', vendor)
 
       const response = await fetch('/finance-hub/api/parse-investments', {
         method: 'POST',
@@ -57,7 +65,8 @@ export function Investments({ data, onSave }: InvestmentsProps) {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to parse file')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to parse file')
       }
 
       const { holdings, totalValueNIS, updatedAt } = await response.json()

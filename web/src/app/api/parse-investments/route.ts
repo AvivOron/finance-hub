@@ -11,6 +11,17 @@ interface ParseResult {
   updatedAt: string
 }
 
+interface ParsedHolding {
+  quantity: number
+  lastPrice: number
+  valueNIS: number
+  costPrice: number
+  gainFromCostNIS: number
+  gainFromCostPct: number
+  personalNote: string | undefined
+  portfolioPct: number | undefined
+}
+
 async function categorizeHoldings(holdings: Partial<Investment>[]): Promise<string[]> {
   const client = new Anthropic()
 
@@ -53,10 +64,37 @@ Respond with ONLY a JSON array of category strings in the same order as the hold
   })
 }
 
+function parsePoalimRow(row: Record<string, any>): ParsedHolding {
+  return {
+    quantity: Number(row['__EMPTY_5']) || 0,
+    lastPrice: Number(row['__EMPTY_2']) || 0,
+    valueNIS: Number(row['__EMPTY_7']) || 0,
+    costPrice: Number(row['__EMPTY_8']) || 0,
+    gainFromCostNIS: Number(row['__EMPTY_11']) || 0,
+    gainFromCostPct: parseFloat(row['__EMPTY_10']?.toString().trim() || '0') || 0,
+    personalNote: row['__EMPTY_12']?.toString().trim() || undefined,
+    portfolioPct: undefined
+  }
+}
+
+function parseExcellenceRow(row: Record<string, any>): ParsedHolding {
+  return {
+    quantity: Number(row['__EMPTY_3']) || 0,
+    lastPrice: Number(row['__EMPTY_2']) || 0,
+    valueNIS: Number(row['__EMPTY_4']) || 0,
+    costPrice: Number(row['__EMPTY_8']) || 0,
+    gainFromCostPct: parseFloat(row['__EMPTY_9']?.toString().trim() || '0') || 0,
+    gainFromCostNIS: Number(row['__EMPTY_11']) || 0,
+    portfolioPct: Number(row['__EMPTY_12']) || undefined,
+    personalNote: row['__EMPTY_16']?.toString().trim() || undefined
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
     const file = formData.get('file') as File
+    const vendor = formData.get('vendor') as string | null
 
     if (!file) {
       return NextResponse.json(
@@ -103,12 +141,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (!vendor) {
+      return NextResponse.json(
+        { error: 'Vendor parameter is required' },
+        { status: 400 }
+      )
+    }
+
     const holdings: Investment[] = []
     let calculatedTotal = 0
-
-    // Detect file type by checking which columns exist
-    const headerRow = rows[headerIdx] as Record<string, any>
-    const isExcellenceFormat = headerRow['__EMPTY_4']?.toString().includes('שווי אחזקה')
 
     // Parse holdings rows (after header)
     for (let i = headerIdx + 1; i < rows.length; i++) {
@@ -121,53 +162,17 @@ export async function POST(req: NextRequest) {
         break
       }
 
-      let quantity: number
-      let lastPrice: number
-      let valueNIS: number
-      let costPrice: number
-      let gainFromCostNIS: number
-      let gainFromCostPct: number
-      let personalNote: string | undefined
-      let portfolioPct: number | undefined
-
-      if (isExcellenceFormat) {
-        // Excellence format: different column mapping
-        quantity = Number(row['__EMPTY_3']) || 0
-        lastPrice = Number(row['__EMPTY_2']) || 0
-        valueNIS = Number(row['__EMPTY_4']) || 0
-        costPrice = Number(row['__EMPTY_8']) || 0
-        const gainFromCostPctStr = row['__EMPTY_9']?.toString().trim() || '0'
-        gainFromCostPct = parseFloat(gainFromCostPctStr) || 0
-        gainFromCostNIS = Number(row['__EMPTY_11']) || 0
-        portfolioPct = Number(row['__EMPTY_12']) || undefined
-        personalNote = row['__EMPTY_16']?.toString().trim() || undefined
-      } else {
-        // Bank format: original mapping
-        quantity = Number(row['__EMPTY_5']) || 0
-        lastPrice = Number(row['__EMPTY_2']) || 0
-        valueNIS = Number(row['__EMPTY_7']) || 0
-        costPrice = Number(row['__EMPTY_8']) || 0
-        gainFromCostNIS = Number(row['__EMPTY_11']) || 0
-        const gainFromCostPctStr = row['__EMPTY_10']?.toString().trim() || '0'
-        gainFromCostPct = parseFloat(gainFromCostPctStr) || 0
-        personalNote = row['__EMPTY_12']?.toString().trim() || undefined
-        portfolioPct = undefined
-      }
+      const parsed = vendor === 'excellence'
+        ? parseExcellenceRow(row)
+        : parsePoalimRow(row)
 
       holdings.push({
         paperNumber: paperNumberStr,
         name,
-        quantity,
-        lastPrice,
-        valueNIS,
-        costPrice,
-        gainFromCostNIS,
-        gainFromCostPct,
-        personalNote: personalNote,
-        portfolioPct: portfolioPct !== undefined && !isNaN(portfolioPct) ? portfolioPct : undefined
+        ...parsed
       })
 
-      calculatedTotal += valueNIS
+      calculatedTotal += parsed.valueNIS
     }
 
     // If we didn't find a summary row total, use calculated sum
