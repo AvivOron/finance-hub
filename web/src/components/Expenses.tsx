@@ -1014,50 +1014,98 @@ function VariableExpensesList({
     )
   }
 
+  // Group variable expenses by category
+  const byCategory = CATEGORIES.reduce<Record<ExpenseCategory, VariableExpense[]>>(
+    (acc, cat) => { acc[cat] = variableExpenses.filter(e => e.category === cat); return acc },
+    {} as Record<ExpenseCategory, VariableExpense[]>
+  )
+
+  const categoriesWithItems = CATEGORIES.filter(cat => byCategory[cat].length > 0)
+
+  // Merge byMonth for a category's variable expenses
+  function catByMonth(items: VariableExpense[]): Record<string, number> {
+    const merged: Record<string, number> = {}
+    for (const ve of items) {
+      const bm = txSummary?.byExpense?.[ve.id] ?? {}
+      for (const [month, amt] of Object.entries(bm)) {
+        merged[month] = (merged[month] ?? 0) + amt
+      }
+    }
+    return merged
+  }
+
+  const hasUnmapped = unmappedRows.length > 0
+
   return (
-    <div className="bg-[#14141f] border border-white/5 rounded-xl overflow-hidden divide-y divide-white/5">
-      {variableExpenses.map(ve => {
-        const byMonth = txSummary?.byExpense?.[ve.id] ?? {}
-        const cfg = CATEGORY_CONFIG[ve.category]
-        const actions = varDeleteConfirm === ve.id ? (
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-500 mr-1">{tFn('expenses.deleteConfirm', lang as any)}</span>
-            <button onClick={async () => { await onSaveVariable(variableExpenses.filter(e => e.id !== ve.id)); setVarDeleteConfirm(null) }} className="p-1.5 rounded-md bg-red-500/20 hover:bg-red-500/30 text-red-400"><Check size={13} /></button>
-            <button onClick={() => setVarDeleteConfirm(null)} className="p-1.5 rounded-md bg-white/5 hover:bg-white/10 text-gray-400"><X size={13} /></button>
-          </div>
-        ) : (
-          <>
-            <button onClick={() => onSaveVariable(variableExpenses.map(e => e.id === ve.id ? { ...e, active: !e.active } : e))} className="p-1.5 rounded-md hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors">
-              {ve.active ? <ToggleRight size={14} className="text-indigo-400" /> : <ToggleLeft size={14} />}
-            </button>
-            <button onClick={() => { setEditingVarId(ve.id); setVarForm({ name: ve.name, category: ve.category, owner: ve.owner ?? '' }); setShowVarModal(true) }} className="p-1.5 rounded-md hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors">
-              <Pencil size={13} />
-            </button>
-            <button onClick={() => setVarDeleteConfirm(ve.id)} className="p-1.5 rounded-md hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-colors">
-              <Trash2 size={13} />
-            </button>
-          </>
-        )
+    <div className="space-y-4">
+      {categoriesWithItems.map(cat => {
+        const items = byCategory[cat]
+        const cfg = CATEGORY_CONFIG[cat]
+        const catTotal = catByMonth(items)
+        const catAvg12 = rollingAvgBestEffort(catTotal, 12)
+
         return (
-          <div key={ve.id} className={cn(!ve.active && 'opacity-50')}>
-            <VariableExpenseRow
-              label={ve.name}
-              byMonth={byMonth}
-              icon={cfg.icon}
-              color={cfg.color}
-              actions={actions}
-              fmt={fmt}
-              lang={lang}
-              t={tFn}
-            />
-            {ve.owner && (
-              <p className="text-xs text-indigo-400 px-5 -mt-2 pb-2">{ve.owner}</p>
-            )}
+          <div key={cat} className="bg-[#14141f] border border-white/5 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/5">
+              <div className="flex items-center gap-2.5">
+                <span className={cn('flex items-center justify-center w-6 h-6 rounded-md border text-xs', cfg.color)}>
+                  {cfg.icon}
+                </span>
+                <span className="text-sm font-semibold text-white">{cfg.label}</span>
+                <span className="text-xs text-gray-600 bg-white/5 rounded-full px-2 py-0.5">{items.length}</span>
+              </div>
+              {catAvg12 != null && (
+                <span className="text-xs text-gray-400 font-medium">
+                  ~{fmt(catAvg12)}<span className="text-gray-600">/mo avg</span>
+                </span>
+              )}
+            </div>
+            <div className="divide-y divide-white/5">
+              {items.map(ve => {
+                const byMonth = txSummary?.byExpense?.[ve.id] ?? {}
+                const actions = varDeleteConfirm === ve.id ? (
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-500 mr-1">{tFn('expenses.deleteConfirm', lang as any)}</span>
+                    <button onClick={async () => { await onSaveVariable(variableExpenses.filter(e => e.id !== ve.id)); setVarDeleteConfirm(null) }} className="p-1.5 rounded-md bg-red-500/20 hover:bg-red-500/30 text-red-400"><Check size={13} /></button>
+                    <button onClick={() => setVarDeleteConfirm(null)} className="p-1.5 rounded-md bg-white/5 hover:bg-white/10 text-gray-400"><X size={13} /></button>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={() => onSaveVariable(variableExpenses.map(e => e.id === ve.id ? { ...e, active: !e.active } : e))} className="p-1.5 rounded-md hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors">
+                      {ve.active ? <ToggleRight size={14} className="text-indigo-400" /> : <ToggleLeft size={14} />}
+                    </button>
+                    <button onClick={() => { setEditingVarId(ve.id); setVarForm({ name: ve.name, category: ve.category, owner: ve.owner ?? '' }); setShowVarModal(true) }} className="p-1.5 rounded-md hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors">
+                      <Pencil size={13} />
+                    </button>
+                    <button onClick={() => setVarDeleteConfirm(ve.id)} className="p-1.5 rounded-md hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-colors">
+                      <Trash2 size={13} />
+                    </button>
+                  </>
+                )
+                return (
+                  <div key={ve.id} className={cn(!ve.active && 'opacity-50')}>
+                    <VariableExpenseRow
+                      label={ve.name}
+                      byMonth={byMonth}
+                      icon={cfg.icon}
+                      color={cfg.color}
+                      actions={actions}
+                      fmt={fmt}
+                      lang={lang}
+                      t={tFn}
+                    />
+                    {ve.owner && (
+                      <p className="text-xs text-indigo-400 px-5 -mt-2 pb-2">{ve.owner}</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )
       })}
 
-      {unmappedRows.length > 0 && (() => {
+      {hasUnmapped && (() => {
         const mergedByMonth: Record<string, number> = {}
         for (const { byMonth } of unmappedRows) {
           for (const [month, amt] of Object.entries(byMonth)) {
@@ -1065,15 +1113,21 @@ function VariableExpensesList({
           }
         }
         return (
-          <VariableExpenseRow
-            label={tFn('expenses.variable.unmappedHeader', lang as any)}
-            byMonth={mergedByMonth}
-            icon={<span className="text-xs">?</span>}
-            color="border-white/10 bg-white/5 text-slate-400"
-            fmt={fmt}
-            lang={lang}
-            t={tFn}
-          />
+          <div className="bg-[#14141f] border border-white/5 rounded-xl overflow-hidden">
+            <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-white/5">
+              <span className="flex items-center justify-center w-6 h-6 rounded-md border text-xs border-white/10 bg-white/5 text-slate-400">?</span>
+              <span className="text-sm font-semibold text-white">{tFn('expenses.variable.unmappedHeader', lang as any)}</span>
+            </div>
+            <VariableExpenseRow
+              label={tFn('expenses.variable.unmappedHeader', lang as any)}
+              byMonth={mergedByMonth}
+              icon={<span className="text-xs">?</span>}
+              color="border-white/10 bg-white/5 text-slate-400"
+              fmt={fmt}
+              lang={lang}
+              t={tFn}
+            />
+          </div>
         )
       })()}
     </div>
