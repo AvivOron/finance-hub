@@ -13,9 +13,11 @@ import { Insights } from '@/components/Insights'
 import { Projections } from '@/components/Projections'
 import { Investments } from '@/components/Investments'
 import { Transactions } from '@/components/Transactions'
+import { Properties } from '@/components/Properties'
 import { OnboardingModal } from '@/components/OnboardingModal'
 import { TourOverlay } from '@/components/TourOverlay'
 import { useData } from '@/hooks/useData'
+import { useProperties } from '@/hooks/useProperties'
 import { useLanguage } from '@/context/LanguageContext'
 import { Page } from '@/types'
 
@@ -48,6 +50,7 @@ export function AppClient({ user }: AppClientProps) {
     refreshData
   } = useData()
   const { lang } = useLanguage()
+  const { properties, addProperty, updateProperty, deleteProperty } = useProperties()
 
   const [page, setPage] = useState<Page>('dashboard')
   const [editingSnapshotId, setEditingSnapshotId] = useState<string | null>(null)
@@ -219,6 +222,14 @@ export function AppClient({ user }: AppClientProps) {
             <Investments data={data} onSave={async (newData) => {
               if (newData.accountHoldings) await saveAccountHoldings(newData.accountHoldings)
             }} />
+          )}
+          {page === 'properties' && (
+            <Properties
+              properties={properties}
+              onAdd={addProperty}
+              onUpdate={updateProperty}
+              onDelete={deleteProperty}
+            />
           )}
           {page === 'settings' && (
             <Settings data={data} onSaveFamilyMembers={saveFamilyMembers} />

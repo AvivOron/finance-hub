@@ -15,7 +15,8 @@ import {
   LogOut,
   Loader2,
   LineChart,
-  CreditCard
+  CreditCard,
+  Building2
 } from 'lucide-react'
 import { Page } from '../types'
 import { cn } from '../utils'
@@ -36,7 +37,7 @@ interface SidebarProps {
   }
 }
 
-type TrackingPage = 'dashboard' | 'accounts' | 'snapshot' | 'history' | 'projections' | 'investments'
+type TrackingPage = 'dashboard' | 'accounts' | 'snapshot' | 'history' | 'projections' | 'investments' | 'properties'
 type ExpensePage = 'expenses' | 'income' | 'insights' | 'transactions'
 type SettingPage = 'settings'
 
@@ -46,7 +47,8 @@ const trackingLabelMap: Record<TrackingPage, string> = {
   'snapshot': 'nav.snapshot',
   'history': 'nav.history',
   'projections': 'nav.projections',
-  'investments': 'nav.investments'
+  'investments': 'nav.investments',
+  'properties': 'nav.properties',
 }
 
 const expenseLabelMap: Record<ExpensePage, string> = {
@@ -66,7 +68,8 @@ const trackingItems: { id: TrackingPage; icon: React.ElementType }[] = [
   { id: 'snapshot', icon: PlusCircle },
   { id: 'history', icon: History },
   { id: 'projections', icon: LineChart },
-  { id: 'investments', icon: TrendingUp }
+  { id: 'investments', icon: TrendingUp },
+  { id: 'properties', icon: Building2 },
 ]
 
 const expenseItems: { id: ExpensePage; icon: React.ElementType }[] = [

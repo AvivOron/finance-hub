@@ -3,11 +3,11 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getEffectiveUserId } from '@/lib/household'
 import Anthropic from '@anthropic-ai/sdk'
-import { AppData, MonthlySnapshot } from '@/types'
+import { AppData, MonthlySnapshot, Property } from '@/types'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-function buildPrompt(data: AppData, currency: string, language: string = 'en'): string {
+function buildPrompt(data: AppData, currency: string, language: string = 'en', properties: Property[] = []): string {
   const currencySymbol = currency === 'NIS' ? '₪' : '$'
   const languageInstruction = language === 'he'
     ? '\n\nIMPORTANT: You MUST respond entirely in Hebrew (עברית). Use Hebrew formatting and conventions.'
@@ -110,6 +110,20 @@ function buildPrompt(data: AppData, currency: string, language: string = 'en'): 
     }).join('\n\n')
   }
 
+  // Properties
+  let propertiesSummary = ''
+  if (properties.length > 0) {
+    const totalPropertyValue = properties.reduce((s, p) => s + p.estimatedValue, 0)
+    propertiesSummary = properties.map(p => {
+      let line = `  - ${p.name} (${p.propertyType}): estimated value=${currencySymbol}${p.estimatedValue.toLocaleString()}, valued on ${p.valuationDate}`
+      if (p.address) line += `, address: ${p.address}`
+      if (p.description) line += ` — "${p.description}"`
+      if (p.notes) line += ` [notes: ${p.notes}]`
+      return line
+    }).join('\n')
+    propertiesSummary += `\n  Total estimated property value: ${currencySymbol}${totalPropertyValue.toLocaleString()}`
+  }
+
   return `You are a personal financial advisor. Analyze the following financial data and provide clear, actionable insights and recommendations. Be specific, reference actual numbers from the data, and prioritize the most impactful advice. Use a friendly but professional tone. The user's currency is ${currency} (${currencySymbol}).${languageInstruction}
 
 ## Financial Data
@@ -144,6 +158,10 @@ ${holdingsSummary ? `
 
 **Investment Holdings:**
 ${holdingsSummary}` : ''}
+${propertiesSummary ? `
+
+**Real Estate / Properties:**
+${propertiesSummary}` : ''}
 
 ## Instructions
 
@@ -156,7 +174,7 @@ Analyze the trend. Is it growing? At what pace? Any concerns?
 Evaluate income vs expenses. Is the savings rate healthy? What's notable?
 
 ## Asset Allocation
-Analyze the mix of account types (bank, brokerage, etc.). Is it well-diversified? Note: for bank accounts, the "investments" sub-balance represents money already invested in stocks/securities — do NOT recommend moving it to investments. Only the "checking" and "savings" sub-balances are liquid cash.
+Analyze the mix of account types (bank, brokerage, real estate, etc.). Is it well-diversified? Note: for bank accounts, the "investments" sub-balance represents money already invested in stocks/securities — do NOT recommend moving it to investments. Only the "checking" and "savings" sub-balances are liquid cash. If real estate is present, include it in the overall asset picture.
 
 ## Debt & Liabilities
 Comment on liabilities. Debt-to-asset ratio, any red flags?
@@ -178,13 +196,15 @@ export async function POST(request: Request) {
   const { currency = 'NIS', language = 'en' } = await request.json()
 
   const effectiveUserId = await getEffectiveUserId(session.user.id)
-  const userData = await prisma.userData.findUnique({
-    where: { userId: effectiveUserId }
-  })
+  const [userData, dbProperties] = await Promise.all([
+    prisma.userData.findUnique({ where: { userId: effectiveUserId } }),
+    prisma.property.findMany({ where: { userId: effectiveUserId }, orderBy: { createdAt: 'asc' } }).catch(() => []),
+  ])
 
   const data = isAppData(userData?.data) ? userData.data : { accounts: [], snapshots: [], familyMembers: [] };
+  const properties = dbProperties as Property[]
 
-  const prompt = buildPrompt(data, currency, language)
+  const prompt = buildPrompt(data, currency, language, properties)
 
   const stream = await client.messages.stream({
     model: 'claude-opus-4-6',

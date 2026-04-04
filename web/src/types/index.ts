@@ -121,6 +121,24 @@ export interface Transaction {
   month: string // YYYY-MM billing month from file
 }
 
+export type PropertyType = 'apartment' | 'house' | 'land' | 'commercial' | 'other'
+
+export interface Property {
+  id: string
+  userId: string
+  name: string
+  address?: string
+  lat?: number
+  lng?: number
+  propertyType: PropertyType
+  estimatedValue: number
+  valuationDate: string // YYYY-MM-DD
+  description?: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type Page =
   | 'dashboard'
   | 'snapshot'
@@ -133,6 +151,7 @@ export type Page =
   | 'investments'
   | 'transactions'
   | 'variable-expenses'
+  | 'properties'
   | 'settings'
 
 export interface Investment {

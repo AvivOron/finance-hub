@@ -66,6 +66,7 @@ model User {
   ownedHousehold   Household?       @relation("HouseholdOwner")
   householdMember  HouseholdMember?
   transactions     Transaction[]
+  properties       Property[]
 }
 
 // Stores each user's AppData JSON blob — one row per user
@@ -115,6 +116,27 @@ model Transaction {
 
   @@index([userId, month])
   @@index([userId, mappingStatus])
+}
+
+// Real estate / property assets tracked separately from accounts
+model Property {
+  id             String   @id @default(cuid())
+  userId         String   // always the household owner's userId
+  name           String
+  address        String?
+  lat            Float?
+  lng            Float?
+  propertyType   String   @default("apartment") // apartment, house, land, commercial, other
+  estimatedValue Float
+  valuationDate  String   // YYYY-MM-DD — when the estimate was recorded
+  description    String?  @db.Text
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // Non-owner users who have joined a household
