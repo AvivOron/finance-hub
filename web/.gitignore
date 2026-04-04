@@ -36,3 +36,4 @@ yarn-error.log*
 
 investments_examples/*
 cc_examples/*
+prisma/db_backup/*
