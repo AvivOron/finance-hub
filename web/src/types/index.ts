@@ -45,6 +45,7 @@ export interface AppData {
   snapshots: MonthlySnapshot[]
   familyMembers?: FamilyMember[]
   expenses?: RecurringExpense[]
+  variableExpenses?: VariableExpense[]
   income?: IncomeSource[]
   accountHoldings?: AccountHoldings[]
   aiInsights?: {
@@ -65,6 +66,14 @@ export type ExpenseCategory =
   | 'groceries'
   | 'lifestyle'
   | 'other'
+
+export interface VariableExpense {
+  id: string
+  name: string
+  category: ExpenseCategory
+  owner?: string
+  active: boolean
+}
 
 export interface RecurringExpense {
   id: string
@@ -91,6 +100,27 @@ export interface IncomeSource {
   active: boolean
 }
 
+export type TransactionMappingStatus = 'auto' | 'manual' | 'unmapped' | 'ignored'
+
+export interface Transaction {
+  id: string
+  date: string // YYYY-MM-DD
+  merchant: string // שם בית עסק
+  amount: number // סכום חיוב (charged amount in NIS)
+  overrideAmount?: number // user-corrected amount (replaces amount for calculations)
+  transactionAmount?: number // סכום עסקה (original, may differ for installments)
+  type: string // רגילה / הוראת קבע / etc
+  calCategory?: string // Cal's own category (Hebrew)
+  cardLast4?: string // last 4 digits from file header
+  accountLabel?: string // e.g. "הפועלים 640-10524"
+  notes?: string
+  expenseCategory?: ExpenseCategory
+  recurringExpenseId?: string // matched recurring expense
+  mappingStatus: TransactionMappingStatus
+  importedAt: string // ISO timestamp
+  month: string // YYYY-MM billing month from file
+}
+
 export type Page =
   | 'dashboard'
   | 'snapshot'
@@ -101,6 +131,8 @@ export type Page =
   | 'insights'
   | 'projections'
   | 'investments'
+  | 'transactions'
+  | 'variable-expenses'
   | 'settings'
 
 export interface Investment {

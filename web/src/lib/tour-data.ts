@@ -404,6 +404,38 @@ export function generateMockData(): AppData {
         active: true
       }
     ],
+    variableExpenses: [
+      {
+        id: 'vexp-1',
+        name: 'Supermarket',
+        category: 'groceries',
+        active: true
+      },
+      {
+        id: 'vexp-2',
+        name: 'Restaurant',
+        category: 'lifestyle',
+        active: true
+      },
+      {
+        id: 'vexp-3',
+        name: 'Pharmacy',
+        category: 'other',
+        active: true
+      },
+      {
+        id: 'vexp-4',
+        name: 'Clothing',
+        category: 'lifestyle',
+        active: true
+      },
+      {
+        id: 'vexp-5',
+        name: 'Fuel',
+        category: 'transport',
+        active: true
+      }
+    ],
     accountHoldings: [
       {
         accountId: 'brokerage-1',

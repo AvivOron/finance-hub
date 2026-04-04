@@ -12,6 +12,7 @@ import { Income } from '@/components/Income'
 import { Insights } from '@/components/Insights'
 import { Projections } from '@/components/Projections'
 import { Investments } from '@/components/Investments'
+import { Transactions } from '@/components/Transactions'
 import { OnboardingModal } from '@/components/OnboardingModal'
 import { TourOverlay } from '@/components/TourOverlay'
 import { useData } from '@/hooks/useData'
@@ -39,6 +40,7 @@ export function AppClient({ user }: AppClientProps) {
     saveSnapshots,
     saveFamilyMembers,
     saveExpenses,
+    saveVariableExpenses,
     saveIncome,
     saveAiInsights,
     saveAccountHoldings,
@@ -189,8 +191,10 @@ export function AppClient({ user }: AppClientProps) {
           {page === 'expenses' && (
             <Expenses
               expenses={data.expenses || []}
+              variableExpenses={data.variableExpenses || []}
               familyMembers={data.familyMembers || []}
               onSave={saveExpenses}
+              onSaveVariable={saveVariableExpenses}
             />
           )}
           {page === 'income' && (
@@ -205,6 +209,9 @@ export function AppClient({ user }: AppClientProps) {
           )}
           {page === 'projections' && (
             <Projections data={data} />
+          )}
+          {page === 'transactions' && (
+            <Transactions data={data} />
           )}
           {page === 'investments' && (
             <Investments data={data} onSave={async (newData) => {

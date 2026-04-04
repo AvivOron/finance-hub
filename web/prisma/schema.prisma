@@ -65,6 +65,7 @@ model User {
   userData         UserData?
   ownedHousehold   Household?       @relation("HouseholdOwner")
   householdMember  HouseholdMember?
+  transactions     Transaction[]
 }
 
 // Stores each user's AppData JSON blob — one row per user
@@ -88,6 +89,32 @@ model Household {
 
   owner   User              @relation("HouseholdOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members HouseholdMember[]
+}
+
+// Credit card transactions imported from Cal/other sources
+model Transaction {
+  id                  String   @id
+  userId              String   // always the household owner's userId (source of truth)
+  date                String   // YYYY-MM-DD
+  merchant            String
+  amount              Float    // charged amount in NIS
+  transactionAmount   Float?   // original amount (may differ for installments)
+  type                String   // רגילה / הוראת קבע / etc
+  calCategory         String?
+  cardLast4           String?
+  accountLabel        String?
+  notes               String?
+  expenseCategory     String?
+  recurringExpenseId  String?
+  overrideAmount      Float?   // user-corrected amount (replaces amount for calculations)
+  mappingStatus       String   @default("unmapped") // auto | manual | unmapped | ignored
+  importedAt          DateTime @default(now())
+  month               String   // YYYY-MM billing month
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, month])
+  @@index([userId, mappingStatus])
 }
 
 // Non-owner users who have joined a household

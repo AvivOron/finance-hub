@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { AppData, Account, MonthlySnapshot, RecurringExpense, IncomeSource, FamilyMember, AccountHoldings } from '../types'
+import { AppData, Account, MonthlySnapshot, RecurringExpense, VariableExpense, IncomeSource, FamilyMember, AccountHoldings } from '../types'
 
 const defaultData: AppData = { accounts: [], snapshots: [], familyMembers: [] }
 
@@ -55,6 +55,13 @@ export function useData() {
     [data, saveAll]
   )
 
+  const saveVariableExpenses = useCallback(
+    async (variableExpenses: VariableExpense[]): Promise<void> => {
+      await saveAll({ ...data, variableExpenses })
+    },
+    [data, saveAll]
+  )
+
   const saveIncome = useCallback(
     async (income: IncomeSource[]): Promise<void> => {
       await saveAll({ ...data, income })
@@ -88,9 +95,8 @@ export function useData() {
   const refreshData = useCallback(async (): Promise<void> => {
     const res = await fetch('/finance-hub/api/data')
     const d = await res.json()
-    console.log('refreshData - fetched from API, setting state:', d.accountHoldings?.map((h: any) => ({ accountId: h.accountId, total: h.totalValueNIS })))
     setData(d && d.accounts ? d : defaultData)
   }, [])
 
-  return { data, loading, saveAccounts, saveSnapshots, saveFamilyMembers, saveExpenses, saveIncome, saveAiInsights, saveAccountHoldings, refreshData }
+  return { data, loading, saveAccounts, saveSnapshots, saveFamilyMembers, saveExpenses, saveVariableExpenses, saveIncome, saveAiInsights, saveAccountHoldings, refreshData }
 }

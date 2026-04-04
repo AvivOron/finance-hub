@@ -35,3 +35,4 @@ yarn-debug.log*
 yarn-error.log*
 
 investments_examples/*
+cc_examples/*

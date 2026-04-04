@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   Plus, Pencil, Trash2, X, Check,
   Home, Baby, RefreshCw, Shield, Zap, Car, PawPrint, MoreHorizontal,
-  ToggleLeft, ToggleRight, ShoppingCart, Sparkles
+  ToggleLeft, ToggleRight, ShoppingCart, Sparkles, TrendingUp
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -16,7 +16,7 @@ import {
   Tooltip,
   Cell
 } from 'recharts'
-import { RecurringExpense, ExpenseCategory, FamilyMember } from '../types'
+import { RecurringExpense, VariableExpense, ExpenseCategory, FamilyMember } from '../types'
 import { generateId, formatCurrency, formatCurrencyShort, cn } from '../utils'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -25,8 +25,10 @@ import { Modal } from './Accounts'
 
 interface ExpensesProps {
   expenses: RecurringExpense[]
+  variableExpenses: VariableExpense[]
   familyMembers: FamilyMember[]
   onSave: (expenses: RecurringExpense[]) => Promise<void>
+  onSaveVariable: (expenses: VariableExpense[]) => Promise<void>
 }
 
 type FormState = {
@@ -85,7 +87,15 @@ function calculateCategoryData(expenses: RecurringExpense[]) {
     .sort((a, b) => b.amount - a.amount)
 }
 
-export function Expenses({ expenses, familyMembers: rawFamilyMembers, onSave }: ExpensesProps) {
+// Rolling average helper: given monthlyTotals map, compute avg over last N months
+function rollingAvg(byMonth: Record<string, number>, months: number): number | null {
+  const sorted = Object.keys(byMonth).sort().slice(-months)
+  if (sorted.length < months) return null
+  const sum = sorted.reduce((s, m) => s + byMonth[m], 0)
+  return sum / months
+}
+
+export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyMembers, onSave, onSaveVariable }: ExpensesProps) {
   const { currency } = useCurrency()
   const { lang } = useLanguage()
   const fmt = (v: number) => formatCurrency(v, currency)
@@ -95,6 +105,22 @@ export function Expenses({ expenses, familyMembers: rawFamilyMembers, onSave }: 
   const [saving, setSaving] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [selectedOwner, setSelectedOwner] = useState<string | null>(null)
+
+  // Variable expenses state
+  const [showVarModal, setShowVarModal] = useState(false)
+  const [editingVarId, setEditingVarId] = useState<string | null>(null)
+  const [varForm, setVarForm] = useState<{ name: string; category: ExpenseCategory; owner: string }>({ name: '', category: 'other', owner: '' })
+  const [varDeleteConfirm, setVarDeleteConfirm] = useState<string | null>(null)
+  const [savingVar, setSavingVar] = useState(false)
+  const [txSummary, setTxSummary] = useState<{ byExpense: Record<string, Record<string, number>>; byCategory: Record<string, Record<string, number>> } | null>(null)
+  const [showVariable, setShowVariable] = useState(true)
+
+  useEffect(() => {
+    fetch('/finance-hub/api/transactions/summary')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setTxSummary(d) })
+      .catch(() => {})
+  }, [])
   const categoryRefs = useRef<Record<ExpenseCategory, HTMLDivElement | null>>(
     {} as Record<ExpenseCategory, HTMLDivElement | null>
   )
@@ -111,6 +137,60 @@ export function Expenses({ expenses, familyMembers: rawFamilyMembers, onSave }: 
   const totalMonthly = activeExpenses.reduce((sum, e) => sum + monthlyAmount(e), 0)
   const totalYearly = totalMonthly * 12
   const categoryData = calculateCategoryData(filteredExpenses)
+
+  // Compute 12-month average of all variable spending (mapped variable expenses + unmapped categories)
+  const avgVariable = (() => {
+    if (!txSummary) return null
+    // Merge all monthly totals: byExpense (mapped variable expenses) + byCategory (unmapped)
+    const combined: Record<string, number> = {}
+    for (const byMonth of Object.values(txSummary.byExpense)) {
+      for (const [month, amt] of Object.entries(byMonth)) {
+        combined[month] = (combined[month] ?? 0) + amt
+      }
+    }
+    for (const byMonth of Object.values(txSummary.byCategory)) {
+      for (const [month, amt] of Object.entries(byMonth)) {
+        combined[month] = (combined[month] ?? 0) + amt
+      }
+    }
+    return rollingAvg(combined, 12)
+  })()
+
+  // Per-category 12m avg for chart stacking (mapped variable expenses + unmapped)
+  const varAvgByCategory = (() => {
+    if (!txSummary) return {} as Record<string, number>
+    const result: Record<string, number> = {}
+    // byCategory = unmapped spend per category
+    for (const [cat, byMonth] of Object.entries(txSummary.byCategory)) {
+      const avg = rollingAvg(byMonth, 12)
+      if (avg != null) result[cat] = (result[cat] ?? 0) + avg
+    }
+    // byExpense = mapped variable expenses; use their category from variableExpenses list
+    for (const ve of variableExpenses) {
+      const byMonth = txSummary.byExpense[ve.id]
+      if (!byMonth) continue
+      const avg = rollingAvg(byMonth, 12)
+      if (avg != null) result[ve.category] = (result[ve.category] ?? 0) + avg
+    }
+    return result
+  })()
+
+  const chartData = categoryData.map(d => ({
+    ...d,
+    varAmount: varAvgByCategory[d.name] ?? 0
+  }))
+  // Also add variable-only categories not in recurring
+  for (const [cat, avg] of Object.entries(varAvgByCategory)) {
+    if (!chartData.find(d => d.name === cat)) {
+      chartData.push({
+        name: cat,
+        amount: 0,
+        label: CATEGORY_CONFIG[cat as ExpenseCategory]?.label ?? cat,
+        varAmount: avg
+      })
+    }
+  }
+  chartData.sort((a, b) => (b.amount + b.varAmount) - (a.amount + a.varAmount))
 
   const byCategory = CATEGORIES.reduce<Record<ExpenseCategory, RecurringExpense[]>>(
     (acc, cat) => {
@@ -249,26 +329,46 @@ export function Expenses({ expenses, familyMembers: rawFamilyMembers, onSave }: 
           label={t('expenses.summary.totalMonthly', lang)}
           value={formatCurrency(totalMonthly, currency)}
           sub={tn('expenses.summary.totalMonthlyActive', activeExpenses.length, lang)}
+          varSub={avgVariable != null ? t('expenses.variable.avgSub', lang).replace('{amount}', formatCurrency(avgVariable, currency)) : undefined}
+          totalSub={avgVariable != null ? t('expenses.variable.totalSub', lang).replace('{amount}', formatCurrency(totalMonthly + avgVariable, currency)) : undefined}
         />
-        <SummaryCard label={t('expenses.summary.totalYearly', lang)} value={formatCurrency(totalYearly, currency)} sub={t('expenses.summary.totalYearlySub', lang)} />
+        <SummaryCard
+          label={t('expenses.summary.totalYearly', lang)}
+          value={formatCurrency(totalYearly, currency)}
+          sub={t('expenses.summary.totalYearlySub', lang)}
+          varSub={avgVariable != null ? t('expenses.variable.avgSub', lang).replace('{amount}', formatCurrency(avgVariable * 12, currency)) : undefined}
+          totalSub={avgVariable != null ? t('expenses.variable.totalSub', lang).replace('{amount}', formatCurrency((totalMonthly + avgVariable) * 12, currency)) : undefined}
+        />
         <SummaryCard
           label={t('expenses.summary.allExpenses', lang)}
           value={String(expenses.length)}
-          sub={
-            expenses.length - activeExpenses.length > 0
-              ? tn('expenses.summary.paused', expenses.length - activeExpenses.length, lang)
-              : t('expenses.summary.allActive', lang)
-          }
+          sub={expenses.length - activeExpenses.length > 0 ? tn('expenses.summary.paused', expenses.length - activeExpenses.length, lang) : ''}
           plain
         />
       </div>
 
-      {categoryData.length > 0 && (
+      {chartData.length > 0 && (
         <div className="bg-[#14141f] border border-white/5 rounded-xl p-6 mb-8">
-          <h2 className="text-sm font-semibold text-gray-300 mb-6">{t('expenses.chart.title', lang)}</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-sm font-semibold text-gray-300">{t('expenses.chart.title', lang)}</h2>
+            {txSummary && (
+              <button
+                onClick={() => setShowVariable(v => !v)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
+                  showVariable
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                    : 'bg-white/5 text-gray-400 border-white/10 hover:border-white/20'
+                )}
+              >
+                <TrendingUp size={12} />
+                {t('expenses.chart.toggleVariable', lang)}
+              </button>
+            )}
+          </div>
           <div className="[&_svg]:cursor-pointer" dir="ltr">
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={categoryData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+              <BarChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }} stackOffset="none">
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis
                   dataKey="label"
@@ -292,11 +392,30 @@ export function Expenses({ expenses, familyMembers: rawFamilyMembers, onSave }: 
                   }}
                   wrapperStyle={{ outline: 'none' }}
                   labelStyle={{ color: '#e5e7eb', fontWeight: 600, marginBottom: 4 }}
-                  formatter={(v) => [fmt(v as number), t('expenses.chart.tooltipLabel', lang)]}
                   cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                  content={({ active, payload, label }: any) => {
+                    if (!active || !payload?.length) return null
+                    const total = payload.reduce((s: number, p: any) => s + (p.value as number), 0)
+                    return (
+                      <div style={{ backgroundColor: '#1a1a27', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 14px' }}>
+                        <p style={{ color: '#e5e7eb', fontWeight: 600, marginBottom: 6 }}>{label}</p>
+                        {payload.map((p: any, i: number) => (
+                          <p key={i} style={{ color: '#d1d5db', fontSize: 13, marginBottom: 2 }}>
+                            <span style={{ color: p.color }}>{p.name === 'varAmount' ? t('expenses.chart.tooltipVariable', lang) : t('expenses.chart.tooltipLabel', lang)}</span>
+                            {': '}{fmt(p.value as number)}
+                          </p>
+                        ))}
+                        {payload.length > 1 && (
+                          <p style={{ color: '#f3f4f6', fontWeight: 600, fontSize: 13, borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 6, paddingTop: 6 }}>
+                            {lang === 'he' ? 'סה״כ' : 'Total'}{': '}{fmt(total)}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  }}
                 />
-                <Bar dataKey="amount" fill="#f59e0b" radius={[6, 6, 0, 0]} onClick={handleBarClick}>
-                  {categoryData.map((_, idx) => (
+                <Bar dataKey="amount" stackId="a" fill="#6366f1" radius={showVariable ? [0, 0, 0, 0] : [6, 6, 0, 0]} onClick={handleBarClick}>
+                  {chartData.map((_, idx) => (
                     <Cell
                       key={`cell-${idx}`}
                       fill={
@@ -307,11 +426,58 @@ export function Expenses({ expenses, familyMembers: rawFamilyMembers, onSave }: 
                     />
                   ))}
                 </Bar>
+                {showVariable && (
+                  <Bar dataKey="varAmount" stackId="a" radius={[6, 6, 0, 0]} onClick={handleBarClick}>
+                    {chartData.map((_, idx) => (
+                      <Cell
+                        key={`varcell-${idx}`}
+                        fill={
+                          ['#f59e0b', '#f97316', '#ef4444', '#ec4899', '#a855f7', '#6366f1', '#0ea5e9'][idx % 7] + '88'
+                        }
+                      />
+                    ))}
+                  </Bar>
+                )}
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
       )}
+
+      {/* Variable Expenses Section */}
+      <div className="mt-10 mb-2">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-white">{t('expenses.variable.title', lang)}</h2>
+            <p className="text-xs text-gray-500 mt-0.5">{t('expenses.variable.subtitle', lang)}</p>
+          </div>
+          <button
+            onClick={() => { setEditingVarId(null); setVarForm({ name: '', category: 'other', owner: '' }); setShowVarModal(true) }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-sm text-indigo-300 font-medium border border-indigo-500/20 transition-colors"
+          >
+            <Plus size={14} />{t('expenses.variable.add', lang)}
+          </button>
+        </div>
+
+        <VariableExpensesList
+          variableExpenses={variableExpenses}
+          txSummary={txSummary}
+          varDeleteConfirm={varDeleteConfirm}
+          setVarDeleteConfirm={setVarDeleteConfirm}
+          onSaveVariable={onSaveVariable}
+          setEditingVarId={setEditingVarId}
+          setVarForm={setVarForm}
+          setShowVarModal={setShowVarModal}
+          lang={lang}
+          fmt={fmt}
+          t={t}
+        />
+      </div>
+
+      <div className="border-t border-white/5 mt-10 mb-6" />
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-white">{t('expenses.recurring.title', lang)}</h2>
+      </div>
 
       {expenses.length === 0 ? (
         <div className="bg-[#14141f] border border-white/5 rounded-xl px-8 py-16 text-center">
@@ -484,6 +650,92 @@ export function Expenses({ expenses, familyMembers: rawFamilyMembers, onSave }: 
         </div>
       )}
 
+      {showVarModal && (
+        <Modal
+          title={editingVarId ? t('expenses.variable.editTitle', lang) : t('expenses.variable.newTitle', lang)}
+          onClose={() => setShowVarModal(false)}
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-400 mb-1.5">{t('expenses.modal.nameLabel', lang)}</label>
+              <input
+                autoFocus
+                type="text"
+                value={varForm.name}
+                onChange={e => setVarForm({ ...varForm, name: e.target.value })}
+                placeholder={t('expenses.modal.namePlaceholder', lang)}
+                className="w-full bg-[#1c1c2a] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-400 mb-1.5">{t('expenses.modal.categoryLabel', lang)}</label>
+              <div className="grid grid-cols-2 gap-2">
+                {CATEGORIES.map(cat => {
+                  const cfg = CATEGORY_CONFIG[cat]
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setVarForm({ ...varForm, category: cat })}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-all text-left',
+                        varForm.category === cat
+                          ? 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300'
+                          : 'bg-transparent border-white/10 text-gray-400 hover:border-white/20'
+                      )}
+                    >
+                      <span className={cn('shrink-0', varForm.category === cat ? 'text-indigo-400' : '')}>{cfg.icon}</span>
+                      {cfg.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            {familyMembers.length > 0 && (
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                  {t('expenses.modal.ownerLabel', lang)} <span className="text-gray-600">{t('expenses.modal.ownerOptional', lang)}</span>
+                </label>
+                <select
+                  value={varForm.owner}
+                  onChange={e => setVarForm({ ...varForm, owner: e.target.value })}
+                  className="w-full bg-[#1c1c2a] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500/60 transition-colors"
+                >
+                  <option value="">{t('expenses.modal.ownerDefault', lang)}</option>
+                  {familyMembers.map(m => <option key={m.name} value={m.name}>{m.name}</option>)}
+                </select>
+              </div>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setShowVarModal(false)} className="flex-1 py-2 rounded-lg border border-white/10 text-sm text-gray-400 hover:text-gray-200 hover:border-white/20 transition-colors">
+                {t('expenses.modal.cancel', lang)}
+              </button>
+              <button
+                disabled={!varForm.name.trim() || savingVar}
+                onClick={async () => {
+                  if (!varForm.name.trim()) return
+                  setSavingVar(true)
+                  try {
+                    let updated: VariableExpense[]
+                    if (editingVarId) {
+                      updated = variableExpenses.map(e => e.id === editingVarId ? { ...e, name: varForm.name.trim(), category: varForm.category, owner: varForm.owner || undefined } : e)
+                    } else {
+                      updated = [...variableExpenses, { id: generateId(), name: varForm.name.trim(), category: varForm.category, owner: varForm.owner || undefined, active: true }]
+                    }
+                    await onSaveVariable(updated)
+                    setShowVarModal(false)
+                  } finally {
+                    setSavingVar(false)
+                  }
+                }}
+                className="flex-1 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 text-sm text-white font-medium transition-colors"
+              >
+                {savingVar ? t('expenses.modal.saving', lang) : editingVarId ? t('expenses.modal.saveChanges', lang) : t('expenses.variable.add', lang)}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {showModal && (
         <Modal
           title={editingId ? t('expenses.modal.editTitle', lang) : t('expenses.modal.newTitle', lang)}
@@ -618,15 +870,173 @@ export function Expenses({ expenses, familyMembers: rawFamilyMembers, onSave }: 
   )
 }
 
+function VariableExpenseRow({
+  label, byMonth, icon, color, actions, fmt, lang, t: tFn
+}: {
+  label: string
+  byMonth: Record<string, number>
+  icon: React.ReactNode
+  color: string
+  actions?: React.ReactNode
+  fmt: (v: number) => string
+  lang: string
+  t: typeof import('@/translations').t
+}) {
+  const months = Object.keys(byMonth).sort()
+  const thisMonth = byMonth[months[months.length - 1]]
+  const avg3 = rollingAvg(byMonth, 3)
+  const avg6 = rollingAvg(byMonth, 6)
+  const avg12 = rollingAvg(byMonth, 12)
+  return (
+    <div className="flex items-center gap-4 px-5 py-3.5 group">
+      <span className={cn('flex items-center justify-center w-6 h-6 rounded-md border text-xs shrink-0', color)}>
+        {icon}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-200">{label}</p>
+      </div>
+      <div className="hidden sm:flex items-center text-right shrink-0">
+        <div className="w-28">
+          <p className="text-xs text-gray-500">{tFn('expenses.variable.thisMonth', lang as any)}</p>
+          <p className="text-sm font-medium text-white">{thisMonth ? fmt(thisMonth) : '—'}</p>
+        </div>
+        <div className="w-28">
+          <p className="text-xs text-gray-500">{tFn('expenses.variable.avg3', lang as any)}</p>
+          <p className="text-sm font-medium text-white">{avg3 != null ? fmt(avg3) : '—'}</p>
+        </div>
+        <div className="w-28">
+          <p className="text-xs text-gray-500">{tFn('expenses.variable.avg6', lang as any)}</p>
+          <p className="text-sm font-medium text-white">{avg6 != null ? fmt(avg6) : '—'}</p>
+        </div>
+        <div className="w-28">
+          <p className="text-xs text-gray-500">{tFn('expenses.variable.avg12', lang as any)}</p>
+          <p className="text-sm font-medium text-white">{avg12 != null ? fmt(avg12) : '—'}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1 shrink-0 w-[74px]">
+        {actions && (
+          <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+            {actions}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function VariableExpensesList({
+  variableExpenses, txSummary, varDeleteConfirm, setVarDeleteConfirm,
+  onSaveVariable, setEditingVarId, setVarForm, setShowVarModal, lang, fmt, t: tFn
+}: {
+  variableExpenses: VariableExpense[]
+  txSummary: { byExpense: Record<string, Record<string, number>>; byCategory: Record<string, Record<string, number>> } | null
+  varDeleteConfirm: string | null
+  setVarDeleteConfirm: (id: string | null) => void
+  onSaveVariable: (expenses: VariableExpense[]) => Promise<void>
+  setEditingVarId: (id: string | null) => void
+  setVarForm: (f: { name: string; category: ExpenseCategory; owner: string }) => void
+  setShowVarModal: (v: boolean) => void
+  lang: string
+  fmt: (v: number) => string
+  t: typeof import('@/translations').t
+}) {
+  const unmappedRows = Object.entries(txSummary?.byCategory ?? {})
+    .map(([cat, byMonth]) => ({ cat: cat as ExpenseCategory, byMonth }))
+    .filter(({ byMonth }) => Object.keys(byMonth).length > 0)
+
+  const hasAnything = variableExpenses.length > 0 || unmappedRows.length > 0
+
+  if (!hasAnything) {
+    return (
+      <div className="bg-[#14141f] border border-white/5 rounded-xl px-6 py-8 text-center">
+        <TrendingUp size={22} className="mx-auto mb-2 text-slate-600" />
+        <p className="text-sm text-gray-500">{tFn('expenses.variable.empty', lang as any)}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-[#14141f] border border-white/5 rounded-xl overflow-hidden divide-y divide-white/5">
+      {variableExpenses.map(ve => {
+        const byMonth = txSummary?.byExpense?.[ve.id] ?? {}
+        const cfg = CATEGORY_CONFIG[ve.category]
+        const actions = varDeleteConfirm === ve.id ? (
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-500 mr-1">{tFn('expenses.deleteConfirm', lang as any)}</span>
+            <button onClick={async () => { await onSaveVariable(variableExpenses.filter(e => e.id !== ve.id)); setVarDeleteConfirm(null) }} className="p-1.5 rounded-md bg-red-500/20 hover:bg-red-500/30 text-red-400"><Check size={13} /></button>
+            <button onClick={() => setVarDeleteConfirm(null)} className="p-1.5 rounded-md bg-white/5 hover:bg-white/10 text-gray-400"><X size={13} /></button>
+          </div>
+        ) : (
+          <>
+            <button onClick={() => onSaveVariable(variableExpenses.map(e => e.id === ve.id ? { ...e, active: !e.active } : e))} className="p-1.5 rounded-md hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors">
+              {ve.active ? <ToggleRight size={14} className="text-indigo-400" /> : <ToggleLeft size={14} />}
+            </button>
+            <button onClick={() => { setEditingVarId(ve.id); setVarForm({ name: ve.name, category: ve.category, owner: ve.owner ?? '' }); setShowVarModal(true) }} className="p-1.5 rounded-md hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors">
+              <Pencil size={13} />
+            </button>
+            <button onClick={() => setVarDeleteConfirm(ve.id)} className="p-1.5 rounded-md hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-colors">
+              <Trash2 size={13} />
+            </button>
+          </>
+        )
+        return (
+          <div key={ve.id} className={cn(!ve.active && 'opacity-50')}>
+            <VariableExpenseRow
+              label={ve.name}
+              byMonth={byMonth}
+              icon={cfg.icon}
+              color={cfg.color}
+              actions={actions}
+              fmt={fmt}
+              lang={lang}
+              t={tFn}
+            />
+            {ve.owner && (
+              <p className="text-xs text-indigo-400 px-5 -mt-2 pb-2">{ve.owner}</p>
+            )}
+          </div>
+        )
+      })}
+
+      {unmappedRows.length > 0 && (
+        <>
+          <div className="px-5 py-2 bg-white/2">
+            <p className="text-xs text-slate-500 font-medium">{tFn('expenses.variable.unmappedHeader', lang as any)}</p>
+          </div>
+          {unmappedRows.map(({ cat, byMonth }) => {
+            const cfg = CATEGORY_CONFIG[cat]
+            return (
+              <VariableExpenseRow
+                key={cat}
+                label={cfg.label}
+                byMonth={byMonth}
+                icon={cfg.icon}
+                color={cn(cfg.color, 'opacity-60')}
+                fmt={fmt}
+                lang={lang}
+                t={tFn}
+              />
+            )
+          })}
+        </>
+      )}
+    </div>
+  )
+}
+
 function SummaryCard({
   label,
   value,
   sub,
+  varSub,
+  totalSub,
   plain
 }: {
   label: string
   value: string
   sub: string
+  varSub?: string
+  totalSub?: string
   plain?: boolean
 }) {
   return (
@@ -636,6 +1046,12 @@ function SummaryCard({
         {value}
       </p>
       <p className="text-xs text-gray-600 mt-1">{sub}</p>
+      {varSub && (
+        <p className="text-xs text-amber-500/80 mt-0.5">{varSub}</p>
+      )}
+      {totalSub && (
+        <p className="text-xs text-orange-300/90 font-medium mt-0.5">{totalSub}</p>
+      )}
     </div>
   )
 }
