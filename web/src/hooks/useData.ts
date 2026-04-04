@@ -8,7 +8,7 @@ const BASE = '/finance-hub/api'
 async function put(path: string, body: unknown) {
   const res = await fetch(`${BASE}${path}`, {
     method: 'PUT',
-  plication/json' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(`Failed to save ${path}`)
