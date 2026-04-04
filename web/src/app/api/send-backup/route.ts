@@ -12,11 +12,16 @@ function formatNIS(amount: number) {
   return new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(amount)
 }
 
-function buildHtml(data: AppData, userEmail: string): string {
+function buildHtml(
+  data: AppData,
+  properties: { estimatedValue: number }[],
+  userEmail: string,
+  transactions: { month: string; amount: number; overrideAmount?: number | null; mappingStatus: string }[] = [],
+): string {
   const accounts = data.accounts ?? []
   const snapshots = data.snapshots ?? []
-  const expenses = (data.expenses ?? []).filter((e: RecurringExpense) => e.active)
-  const income = (data.income ?? []).filter((s: IncomeSource) => s.active)
+  const activeExpenses = (data.expenses ?? []).filter((e: RecurringExpense) => e.active)
+  const activeIncome = (data.income ?? []).filter((s: IncomeSource) => s.active)
 
   // Latest snapshot net worth
   const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date))
@@ -33,43 +38,44 @@ function buildHtml(data: AppData, userEmail: string): string {
   }
   const netWorth = assets - liabilities
 
-  // Monthly expenses
-  let totalExpenses = 0
-  const expenseRows = expenses.map((e: RecurringExpense) => {
-    const monthly = e.billingCycle === 'yearly' ? e.amount / 12 : e.amount
-    totalExpenses += monthly
-    return `<tr>
-      <td style="padding:8px 12px;border-bottom:1px solid #2a2a3a;color:#d1d5db;">${e.name}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #2a2a3a;color:#9ca3af;text-align:center;">${e.category}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #2a2a3a;color:#d1d5db;text-align:right;">${formatNIS(monthly)}</td>
-    </tr>`
-  }).join('')
+  // Recurring expense monthly total
+  let recurringExpenses = 0
+  for (const e of activeExpenses) {
+    recurringExpenses += e.billingCycle === 'yearly' ? e.amount / 12 : e.amount
+  }
 
-  // Monthly income
+  // Variable expense avg: 12-month rolling average of non-ignored transactions
+  const variableExpenseIds = new Set((data.variableExpenses ?? []).map((e) => e.id))
+  const avgVariableTotal = (() => {
+    const nonIgnored = transactions.filter(
+      (tx) => tx.mappingStatus !== 'ignored' && variableExpenseIds.has((tx as any).recurringExpenseId ?? '')
+    )
+    // sum by month
+    const byMonth: Record<string, number> = {}
+    for (const tx of nonIgnored) {
+      byMonth[tx.month] = (byMonth[tx.month] ?? 0) + (tx.overrideAmount ?? tx.amount)
+    }
+    const months = Object.keys(byMonth).sort().slice(-12)
+    if (months.length === 0) return 0
+    return months.reduce((s, m) => s + byMonth[m], 0) / months.length
+  })()
+
+  const totalExpenses = recurringExpenses + avgVariableTotal
+
   let totalNetIncome = 0
-  const incomeRows = income.map((s: IncomeSource) => {
-    const factor = s.billingCycle === 'yearly' ? 1 / 12 : 1
-    const net = s.netAmount * factor
-    totalNetIncome += net
-    return `<tr>
-      <td style="padding:8px 12px;border-bottom:1px solid #2a2a3a;color:#d1d5db;">${s.name}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #2a2a3a;color:#9ca3af;text-align:center;">${s.owner ?? '—'}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #2a2a3a;color:#d1d5db;text-align:right;">${formatNIS(net)}</td>
-    </tr>`
-  }).join('')
+  for (const s of activeIncome) {
+    totalNetIncome += s.netAmount * (s.billingCycle === 'yearly' ? 1 / 12 : 1)
+  }
 
-  // Accounts list with latest balance
-  const accountRows = accounts.map((a: Account) => {
-    const entry = latest?.entries.find((e) => e.accountId === a.id)
-    const balance = entry ? entry.balance : null
-    return `<tr>
-      <td style="padding:8px 12px;border-bottom:1px solid #2a2a3a;color:#d1d5db;">${a.name}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #2a2a3a;color:#9ca3af;text-align:center;">${a.type === 'asset' ? 'Asset' : 'Liability'}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #2a2a3a;color:${a.type === 'asset' ? '#6ee7b7' : '#fca5a5'};text-align:right;">${balance != null ? formatNIS(balance) : '—'}</td>
-    </tr>`
-  }).join('')
+  const totalPropertyValue = properties.reduce((sum, p) => sum + p.estimatedValue, 0)
 
   const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+
+  const card = (label: string, value: string, color: string) => `
+    <div style="flex:1;min-width:140px;background:#14141f;border-radius:8px;padding:16px;">
+      <p style="margin:0 0 4px;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;">${label}</p>
+      <p style="margin:0;font-size:18px;font-weight:700;color:${color};">${value}</p>
+    </div>`
 
   const section = (title: string, content: string) => `
     <div style="margin-bottom:32px;">
@@ -77,11 +83,14 @@ function buildHtml(data: AppData, userEmail: string): string {
       ${content}
     </div>`
 
-  const table = (headers: string[], rows: string) => `
+  const statRow = (label: string, value: string, color = '#d1d5db') =>
+    `<tr>
+      <td style="padding:8px 12px;border-bottom:1px solid #2a2a3a;color:#9ca3af;">${label}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #2a2a3a;text-align:right;color:${color};font-weight:600;">${value}</td>
+    </tr>`
+
+  const statsTable = (rows: string) => `
     <table style="width:100%;border-collapse:collapse;background:#14141f;border-radius:8px;overflow:hidden;">
-      <thead>
-        <tr>${headers.map(h => `<th style="padding:8px 12px;text-align:${h === headers[headers.length - 1] ? 'right' : 'left'};font-size:12px;font-weight:500;color:#6b7280;border-bottom:1px solid #2a2a3a;">${h}</th>`).join('')}</tr>
-      </thead>
       <tbody>${rows}</tbody>
     </table>`
 
@@ -103,41 +112,35 @@ function buildHtml(data: AppData, userEmail: string): string {
       <p style="margin:0;font-size:13px;color:#6b7280;">${date} · ${userEmail}</p>
     </div>
 
-    <!-- Net Worth Summary -->
+    <!-- Net Worth -->
     ${section('Net Worth', `
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        ${[
-          { label: 'Net Worth', value: formatNIS(netWorth), color: netWorth >= 0 ? '#6ee7b7' : '#fca5a5' },
-          { label: 'Assets', value: formatNIS(assets), color: '#6ee7b7' },
-          { label: 'Liabilities', value: formatNIS(liabilities), color: '#fca5a5' },
-        ].map(card => `
-          <div style="flex:1;min-width:140px;background:#14141f;border-radius:8px;padding:16px;">
-            <p style="margin:0 0 4px;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;">${card.label}</p>
-            <p style="margin:0;font-size:18px;font-weight:700;color:${card.color};">${card.value}</p>
-          </div>
-        `).join('')}
+        ${card('Net Worth', formatNIS(netWorth), netWorth >= 0 ? '#6ee7b7' : '#fca5a5')}
+        ${card('Assets', formatNIS(assets), '#6ee7b7')}
+        ${card('Liabilities', formatNIS(liabilities), '#fca5a5')}
       </div>
       ${latest ? `<p style="margin:8px 0 0;font-size:12px;color:#4b5563;">Based on ${latest.date} snapshot</p>` : ''}
     `)}
 
-    <!-- Accounts -->
-    ${accounts.length > 0 ? section('Accounts', table(['Account', 'Type', 'Balance'], accountRows)) : ''}
-
-    <!-- Income -->
-    ${income.length > 0 ? section('Monthly Income', `
-      ${table(['Source', 'Owner', 'Net / month'], incomeRows)}
-      <p style="margin:8px 0 0;font-size:13px;color:#d1d5db;">Total net: <strong style="color:#6ee7b7;">${formatNIS(totalNetIncome)}/mo</strong></p>
-    `) : ''}
-
-    <!-- Expenses -->
-    ${expenses.length > 0 ? section('Monthly Expenses', `
-      ${table(['Expense', 'Category', 'Amount / month'], expenseRows)}
-      <p style="margin:8px 0 0;font-size:13px;color:#d1d5db;">Total: <strong style="color:#fca5a5;">${formatNIS(totalExpenses)}/mo</strong></p>
-    `) : ''}
+    <!-- Summary -->
+    ${section('Summary', statsTable([
+      statRow('Accounts', `${accounts.length}`),
+      statRow('Snapshots recorded', `${snapshots.length}`),
+      activeIncome.length > 0 ? statRow('Monthly net income', `${formatNIS(totalNetIncome)}/mo`, '#6ee7b7') : '',
+      activeExpenses.length > 0 ? statRow('Monthly expenses', `${formatNIS(totalExpenses)}/mo`, '#fca5a5') : '',
+      activeIncome.length > 0 && activeExpenses.length > 0
+        ? statRow('Monthly cash flow', `${formatNIS(totalNetIncome - totalExpenses)}/mo`, totalNetIncome >= totalExpenses ? '#6ee7b7' : '#fca5a5')
+        : '',
+      properties.length > 0 ? statRow('Properties', `${properties.length} · ${formatNIS(totalPropertyValue)}`) : '',
+      data.accountHoldings?.length
+        ? statRow('Investment portfolios', `${data.accountHoldings.length}`)
+        : '',
+      transactions.length > 0 ? statRow('Transactions', `${transactions.length}`) : '',
+    ].filter(Boolean).join('')))}
 
     <!-- Footer -->
     <div style="margin-top:40px;padding-top:20px;border-top:1px solid #1a1a2a;">
-      <p style="margin:0;font-size:12px;color:#4b5563;">Sent from <a href="https://avivo.dev/finance-hub" style="color:#6366f1;text-decoration:none;">Finance Hub</a> · Raw JSON backup attached</p>
+      <p style="margin:0;font-size:12px;color:#4b5563;">Sent from <a href="https://avivo.dev/finance-hub" style="color:#6366f1;text-decoration:none;">Finance Hub</a> · Full JSON backup attached</p>
     </div>
   </div>
 </body>
@@ -155,15 +158,21 @@ export async function POST() {
     const userData = await prisma.userData.findUnique({ where: { userId: effectiveUserId } })
     const data = (userData?.data as unknown as AppData) ?? { accounts: [], snapshots: [] }
 
+    const [properties, transactions] = await Promise.all([
+      prisma.property.findMany({ where: { userId: effectiveUserId } }),
+      prisma.transaction.findMany({ where: { userId: effectiveUserId } }),
+    ])
+
     const dateStr = new Date().toISOString().split('T')[0]
-    const jsonStr = JSON.stringify(data, null, 2)
+    const exportData = { ...data, properties, transactions }
+    const jsonStr = JSON.stringify(exportData, null, 2)
     const jsonBase64 = Buffer.from(jsonStr).toString('base64')
 
     const { error } = await resend.emails.send({
       from: 'Finance Hub <no-reply@avivo.dev>',
       to: session.user.email,
       subject: `Finance Hub Backup — ${dateStr}`,
-      html: buildHtml(data, session.user.email),
+      html: buildHtml(data, properties, session.user.email, transactions),
       attachments: [
         {
           filename: `finance-hub-backup-${dateStr}.json`,

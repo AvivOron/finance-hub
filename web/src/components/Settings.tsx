@@ -420,11 +420,22 @@ export function Settings({ data, onSaveFamilyMembers }: SettingsProps) {
     }
   }
 
-  function handleExport() {
+  async function handleExport() {
     setError(null)
     setSuccess(null)
     try {
-      const dataStr = JSON.stringify(data, null, 2)
+      let exportData: any = { ...data }
+      try {
+        const [propRes, txRes] = await Promise.all([
+          fetch('/finance-hub/api/properties'),
+          fetch('/finance-hub/api/transactions'),
+        ])
+        if (propRes.ok) exportData.properties = await propRes.json()
+        if (txRes.ok) { const t = await txRes.json(); exportData.transactions = t.transactions ?? t }
+      } catch {
+        // fetch failed — export without extra data
+      }
+      const dataStr = JSON.stringify(exportData, null, 2)
       const blob = new Blob([dataStr], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
