@@ -117,16 +117,18 @@ export function Sidebar({ page, onNavigate, open, isDemo, onRestartTour, user }:
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-amber-400 shrink-0">
               <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" fill="currentColor" />
             </svg>
-            <p className="text-xs font-medium text-amber-300">Demo Mode</p>
+            <p className="text-xs font-medium text-amber-300">{t('nav.demo.title', lang)}</p>
           </div>
           <div className="flex items-center justify-between mt-1">
-            <p className="text-[10px] text-amber-200/70">This is sample data. Sign in to use your own.</p>
+            <p className="text-[10px] text-amber-200/70">{t('nav.demo.description', lang)}</p>
+          </div>
+          <div className="flex items-center justify-between mt-1">
             {onRestartTour && (
               <button
                 onClick={onRestartTour}
-                className="text-[10px] text-amber-300/70 hover:text-amber-300 underline underline-offset-2 transition-colors shrink-0 ml-2"
+                className="text-[10px] text-amber-300/70 hover:text-amber-300 underline underline-offset-2 transition-colors shrink-0"
               >
-                Replay tour
+                {t('nav.demo.replayTour', lang)}
               </button>
             )}
           </div>

@@ -135,24 +135,23 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
     ? expenses.filter((e) => e.owner === selectedOwner)
     : expenses
 
+  const filteredVariableExpenses = selectedOwner
+    ? variableExpenses.filter((e) => e.owner === selectedOwner)
+    : variableExpenses
+
   const activeExpenses = filteredExpenses.filter((e) => e.active)
   const totalMonthly = activeExpenses.reduce((sum, e) => sum + monthlyAmount(e), 0)
   const totalYearly = totalMonthly * 12
   const categoryData = calculateCategoryData(filteredExpenses)
 
   // Compute 12-month average of all variable spending (mapped variable expenses + unmapped categories)
-  const variableExpenseIds = new Set(variableExpenses.map(e => e.id))
+  const variableExpenseIds = new Set(filteredVariableExpenses.map(e => e.id))
   const avgVariable = (() => {
     if (!txSummary) return null
     // Merge monthly totals: only variable expense mappings (not recurring) + unmapped categories
     const combined: Record<string, number> = {}
     for (const [expenseId, byMonth] of Object.entries(txSummary.byExpense)) {
       if (!variableExpenseIds.has(expenseId)) continue
-      for (const [month, amt] of Object.entries(byMonth)) {
-        combined[month] = (combined[month] ?? 0) + amt
-      }
-    }
-    for (const byMonth of Object.values(txSummary.byCategory)) {
       for (const [month, amt] of Object.entries(byMonth)) {
         combined[month] = (combined[month] ?? 0) + amt
       }
@@ -164,13 +163,8 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
   const varAvgByCategory = (() => {
     if (!txSummary) return {} as Record<string, number>
     const result: Record<string, number> = {}
-    // byCategory = unmapped spend per category
-    for (const [cat, byMonth] of Object.entries(txSummary.byCategory)) {
-      const avg = rollingAvgBestEffort(byMonth, 12)
-      if (avg != null) result[cat] = (result[cat] ?? 0) + avg
-    }
     // byExpense = mapped variable expenses; use their category from variableExpenses list
-    for (const ve of variableExpenses) {
+    for (const ve of filteredVariableExpenses) {
       const byMonth = txSummary.byExpense[ve.id]
       if (!byMonth) continue
       const avg = rollingAvgBestEffort(byMonth, 12)
@@ -318,13 +312,6 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
           <h1 className="text-2xl font-bold text-white tracking-tight">{t('expenses.title', lang)}</h1>
           <p className="text-sm text-gray-500 mt-0.5">{t('expenses.subtitle', lang)}</p>
         </div>
-        <button
-          onClick={openAdd}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-sm text-white font-medium transition-colors"
-        >
-          <Plus size={15} />
-          {t('expenses.addButton', lang)}
-        </button>
       </div>
 
       {familyMembers.length > 0 && (
@@ -488,7 +475,7 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
         </div>
 
         <VariableExpensesList
-          variableExpenses={variableExpenses}
+          variableExpenses={filteredVariableExpenses}
           txSummary={txSummary}
           varDeleteConfirm={varDeleteConfirm}
           setVarDeleteConfirm={setVarDeleteConfirm}
@@ -505,6 +492,12 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
       <div className="border-t border-white/5 mt-10 mb-6" />
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-white">{t('expenses.recurring.title', lang)}</h2>
+        <button
+          onClick={openAdd}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-sm text-indigo-300 font-medium border border-indigo-500/20 transition-colors"
+        >
+          <Plus size={14} />{t('expenses.modal.addExpense', lang)}
+        </button>
       </div>
 
       {expenses.length === 0 ? (

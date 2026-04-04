@@ -65,7 +65,7 @@ const translations: Record<string, { en: string; he: string }> = {
   // Variable Expenses
   'expenses.variable.title': { en: 'Variable Expenses', he: 'הוצאות משתנות' },
   'expenses.variable.subtitle': { en: 'Tracked from transaction history — no fixed amount', he: 'מחושב מהיסטוריית עסקאות — ללא סכום קבוע' },
-  'expenses.variable.add': { en: 'Add Variable', he: 'הוסף משתנה' },
+  'expenses.variable.add': { en: 'Add Variable', he: 'הוסף הוצאה משתנה' },
   'expenses.variable.empty': { en: 'No variable expenses yet. Add one to track spending patterns from your transactions.', he: 'אין עדיין הוצאות משתנות. הוסף כדי לעקוב אחר דפוסי הוצאה מהעסקאות.' },
   'expenses.variable.thisMonth': { en: 'Last month', he: 'חודש אחרון' },
   'expenses.variable.avg3': { en: '3-month avg', he: 'ממוצע 3 חודשים' },
@@ -84,6 +84,9 @@ const translations: Record<string, { en: string; he: string }> = {
   'nav.section.tracking': { en: 'Worth Tracking', he: 'מעקב נכסים' },
   'nav.section.management': { en: 'Management', he: 'ניהול' },
   'nav.signOut': { en: 'Sign out', he: 'התנתקות' },
+  'nav.demo.title': { en: 'Demo Mode', he: 'מצב הדגמה' },
+  'nav.demo.description': { en: 'This is sample data. Sign in to use your own.', he: 'זהו מידע לדוגמה. התחבר כדי להשתמש בנתונים שלך.' },
+  'nav.demo.replayTour': { en: 'Replay tour', he: 'צפה בסיור מחדש' },
 
   // Dashboard
   'dashboard.title': { en: 'Dashboard', he: 'לוח בקרה' },
@@ -260,7 +263,7 @@ const translations: Record<string, { en: string; he: string }> = {
   'expenses.modal.cancel': { en: 'Cancel', he: 'ביטול' },
   'expenses.modal.saving': { en: 'Saving…', he: 'שמירה...' },
   'expenses.modal.saveChanges': { en: 'Save Changes', he: 'שמור שינויים' },
-  'expenses.modal.addExpense': { en: 'Add Expense', he: 'הוסף הוצאה' },
+  'expenses.modal.addExpense': { en: 'Add Expense', he: 'הוסף הוצאה קבועה' },
   'expenses.error.save': { en: 'Error saving expense: ', he: 'שגיאה בשמירת הוצאה: ' },
   'expenses.drift.warning': { en: 'Actual vs. set amount differs by {pct}% last month ({actual} actual vs. {set} set)', he: 'הסכום בפועל שונה ב-{pct}% מהסכום שהוגדר בחודש האחרון ({actual} בפועל לעומת {set} שהוגדר)' },
   'expenses.drift.update': { en: 'Update amount', he: 'עדכן סכום' },

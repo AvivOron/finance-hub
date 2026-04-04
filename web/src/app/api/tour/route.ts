@@ -93,6 +93,37 @@ function mockTransactions(userId: string) {
   )
 }
 
+function mockProperties(userId: string) {
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  return [
+    {
+      userId,
+      name: 'Primary Residence',
+      address: '14 Herzl Street, Tel Aviv',
+      lat: 32.0853,
+      lng: 34.7818,
+      propertyType: 'apartment',
+      estimatedValue: 3200000,
+      valuationDate: todayStr,
+      description: '4-room apartment, purchased 2018',
+      notes: 'Linked to mortgage account',
+    },
+    {
+      userId,
+      name: 'Investment Property',
+      address: '7 Ben Gurion Blvd, Haifa',
+      lat: 32.8156,
+      lng: 34.9858,
+      propertyType: 'apartment',
+      estimatedValue: 1450000,
+      valuationDate: todayStr,
+      description: '3-room apartment, rented out',
+      notes: 'Monthly rental income ₪4,500',
+    },
+  ]
+}
+
 export async function GET(request: Request) {
   try {
     console.log('[Tour API] GET request received')
@@ -125,6 +156,10 @@ export async function GET(request: Request) {
     // Seed mock transactions (delete existing demo ones first)
     await prisma.transaction.deleteMany({ where: { userId: user.id } })
     await prisma.transaction.createMany({ data: mockTransactions(user.id) })
+
+    // Seed mock properties (delete existing demo ones first)
+    await prisma.property.deleteMany({ where: { userId: user.id } })
+    await prisma.property.createMany({ data: mockProperties(user.id) })
 
     const now = Math.floor(Date.now() / 1000)
 

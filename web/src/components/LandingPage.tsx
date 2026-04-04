@@ -6,7 +6,6 @@ import {
   TrendingUp,
   ShieldCheck,
   Cloud,
-  BarChart3,
   Wallet,
   Receipt,
   BrainCircuit,
@@ -20,7 +19,7 @@ import { cn } from '@/utils'
 const copy = {
   h1a:          { en: 'Your complete', he: 'לוח הבקרה הפיננסי' },
   h1b:          { en: 'finance dashboard', he: 'שלך' },
-  subtitle:     { en: 'Track net worth, recurring expenses, and income — in one private, beautifully simple place.', he: 'עקוב אחרי שווי נטו, הוצאות חוזרות והכנסות — במקום אחד פרטי ופשוט.' },
+  subtitle:     { en: 'Track net worth, investments, real estate, and every expense — in one private, beautifully simple place.', he: 'עקוב אחרי שווי נטו, השקעות, נדל"ן וכל הוצאה — במקום אחד פרטי ופשוט.' },
   signIn:       { en: 'Sign in to access your dashboard', he: 'התחבר כדי לגשת ללוח הבקרה' },
   encrypted:    { en: 'End-to-end encrypted', he: 'מוצפן מקצה לקצה' },
   synced:       { en: 'Synced to the cloud', he: 'מסונכרן לענן' },
@@ -35,43 +34,48 @@ const copy = {
 const features = [
   {
     icon: TrendingUp,
-    title:       { en: 'Net worth tracking',    he: 'מעקב שווי נטו' },
-    description: { en: 'Connect assets and liabilities to see your net worth evolve over time with historical charts.', he: 'חבר נכסים והתחייבויות וצפה כיצד שווי הנטו שלך מתפתח לאורך זמן.' },
+    title:       { en: 'Net worth & history',       he: 'שווי נטו והיסטוריה' },
+    description: { en: 'Record monthly snapshots across all your accounts and watch your net worth trajectory build over time.', he: 'תעד תיעודים חודשיים בכל החשבונות וצפה כיצד מסלול שווי הנטו שלך מתפתח לאורך זמן.' },
   },
   {
     icon: Receipt,
-    title:       { en: 'Recurring expenses',    he: 'הוצאות חוזרות' },
-    description: { en: 'Log subscriptions, rent, and insurance. See your total monthly burn at a glance.', he: 'תעד מנויים, שכירות וביטוחים. ראה את סך ההוצאות החודשיות במבט אחד.' },
+    title:       { en: 'Expenses & transactions',   he: 'הוצאות ועסקאות' },
+    description: { en: 'Log fixed recurring costs and import credit card transactions. Track every shekel by category and see your true monthly burn.', he: 'תעד הוצאות קבועות וייבא עסקאות כרטיס אשראי. עקוב אחרי כל שקל לפי קטגוריה וראה את ההוצאה החודשית האמיתית.' },
   },
   {
     icon: Wallet,
-    title:       { en: 'Income management',     he: 'ניהול הכנסות' },
-    description: { en: 'Track salary, freelance, and investments. Supports gross-to-net calculation.', he: 'עקוב אחרי משכורת, פרילנס והשקעות. תומך בחישוב ברוטו לנטו.' },
-  },
-  {
-    icon: BarChart3,
-    title:       { en: 'Monthly snapshots',     he: 'תיעוד חודשי' },
-    description: { en: 'Record account balances each month and view your wealth trajectory over time.', he: 'תעד יתרות חשבון מדי חודש וצפה במסלול העושר שלך לאורך זמן.' },
-  },
-  {
-    icon: BrainCircuit,
-    title:       { en: 'AI-powered insights',   he: 'תובנות מבוססות AI' },
-    description: { en: 'Plain-language analysis of your finances — trends, savings rate, and suggestions.', he: 'ניתוח פיננסי בשפה פשוטה — מגמות, שיעור חיסכון והמלצות.' },
-  },
-  {
-    icon: RefreshCw,
-    title:       { en: 'Multi-currency',        he: 'ריבוי מטבעות' },
-    description: { en: 'Switch between NIS (₪) and USD ($) with automatic conversion across all views.', he: 'עבור בין ₪ ל-$ עם המרה אוטומטית בכל התצוגות.' },
-  },
-  {
-    icon: LineChart,
-    title:       { en: 'Future projections',    he: 'תחזיות עתידיות' },
-    description: { en: 'Forecast your net worth years ahead. Model returns, deposits, and fees to see exactly where you\'re headed.', he: 'חזה את שווי הנטו שלך שנים קדימה. בחן תשואות, הפקדות ודמי ניהול כדי לדעת לאן אתה הולך.' },
+    title:       { en: 'Income management',         he: 'ניהול הכנסות' },
+    description: { en: 'Track salary and other income sources with gross and net amounts. See your savings rate and monthly surplus at a glance.', he: 'עקוב אחרי משכורת ומקורות הכנסה נוספים עם ברוטו ונטו. ראה את שיעור החיסכון והעודף החודשי במבט אחד.' },
   },
   {
     icon: PieChart,
-    title:       { en: 'Portfolio tracking',    he: 'מעקב תיק השקעות' },
-    description: { en: 'Upload brokerage statements to track holdings, gains, and fees. See your asset allocation at a glance.', he: 'העלה דוחות חשבונות השקעות כדי לעקוב אחרי אחזקות, רווחים ודמים. ראה את הקצאת הנכסים שלך במבט אחד.' },
+    title:       { en: 'Investments & real estate', he: 'השקעות ונדל"ן' },
+    description: { en: 'Upload brokerage statements to track holdings and fees, and log properties to see your full asset picture in one place.', he: 'העלה דוחות השקעות למעקב אחרי אחזקות ודמי ניהול, ותעד נכסי נדל"ן לתמונת הנכסים המלאה שלך.' },
+  },
+  {
+    icon: LineChart,
+    title:       { en: 'Future projections',        he: 'תחזיות עתידיות' },
+    description: { en: 'Forecast your net worth years ahead. Model different return rates, monthly deposits, and the real cost of fees over time.', he: 'חזה את שווי הנטו שלך שנים קדימה. בחן שיעורי תשואה שונים, הפקדות חודשיות והשפעת דמי הניהול לאורך זמן.' },
+  },
+  {
+    icon: BrainCircuit,
+    title:       { en: 'AI-powered insights',       he: 'תובנות מבוססות AI' },
+    description: { en: 'Plain-language analysis of your finances — trends, savings rate, and actionable suggestions from Claude AI.', he: 'ניתוח פיננסי בשפה פשוטה — מגמות, שיעור חיסכון והמלצות מעשיות מ-Claude AI.' },
+  },
+  {
+    icon: Users,
+    title:       { en: 'Household sharing',         he: 'שיתוף משפחתי' },
+    description: { en: 'Invite a partner to share one dashboard. Organise accounts, income, and expenses by family member.', he: 'הזמן בן/בת זוג לשתף לוח בקרה אחד. ארגן חשבונות, הכנסות והוצאות לפי בן משפחה.' },
+  },
+  {
+    icon: RefreshCw,
+    title:       { en: 'Multi-currency',            he: 'ריבוי מטבעות' },
+    description: { en: 'Switch between NIS (₪) and USD ($) with automatic conversion across all views.', he: 'עבור בין ₪ ל-$ עם המרה אוטומטית בכל התצוגות.' },
+  },
+  {
+    icon: ShieldCheck,
+    title:       { en: 'Private & secure',          he: 'פרטי ומאובטח' },
+    description: { en: 'Your data is encrypted, stored in your own account, and never sold. Sign in with Google — no passwords needed.', he: 'הנתונים שלך מוצפנים, מאוחסנים בחשבונך ולא נמכרים לעולם. התחבר עם Google — ללא סיסמאות.' },
   },
 ]
 
@@ -81,19 +85,19 @@ const steps = [
     detail: { en: 'One click — no password needed. Your account is created automatically.', he: 'לחיצה אחת — אין צורך בסיסמה. החשבון נוצר אוטומטית.' },
   },
   {
-    title:  { en: 'Add your accounts',        he: 'הוסף חשבונות' },
+    title:  { en: 'Add your accounts',        he: 'הגדר חשבונות' },
     detail: { en: 'Enter bank accounts, investments, mortgage, and any asset or liability.', he: 'הזן חשבונות בנק, השקעות, משכנתא וכל נכס או התחייבות.' },
   },
   {
-    title:  { en: 'Record a snapshot',        he: 'תעד תיעוד חודשי' },
+    title:  { en: 'Record a snapshot',        he: 'הוסף תיעוד חודשי' },
     detail: { en: 'Log current balances for each account. Repeat monthly to build history.', he: 'תעד יתרות נוכחיות לכל חשבון. חזור מדי חודש לבניית היסטוריה.' },
   },
   {
-    title:  { en: 'Track expenses & income',  he: 'עקוב אחרי הוצאות והכנסות' },
-    detail: { en: 'Add recurring costs and income sources to see your true monthly cash flow.', he: 'הוסף עלויות חוזרות ומקורות הכנסה כדי לראות את תזרים המזומנים האמיתי שלך.' },
+    title:  { en: 'Fill in the details',  he: 'הזן הוצאות והכנסות' },
+    detail: { en: 'Add income sources, recurring expenses, properties, and import credit card transactions to get a complete picture of your cash flow.', he: 'הוסף מקורות הכנסה, הוצאות קבועות, נכסי נדל"ן וייבא עסקאות כרטיס אשראי לתמונה מלאה של תזרים המזומנים שלך.' },
   },
   {
-    title:  { en: 'Upload portfolio holdings',  he: 'העלה את אחזקות התיק' },
+    title:  { en: 'Upload portfolio holdings', he: 'העלה את אחזקות התיק' },
     detail: { en: 'Import XLSX brokerage statements to track investments, gains, and management fees in one place.', he: 'ייבא דוחות חשבונות השקעות כדי לעקוב אחרי השקעות, רווחים ודמי ניהול במקום אחד.' },
   },
 ]

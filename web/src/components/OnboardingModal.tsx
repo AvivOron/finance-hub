@@ -24,9 +24,9 @@ type Lang = 'en' | 'he'
 const s = {
   // Welcome
   welcomeTitle:       { en: 'Welcome to Finance Hub', he: 'ברוכים הבאים ל-Finance Hub' },
-  welcomeSubtitle:    { en: 'Your personal finance command centre. Track net worth, manage accounts, log expenses, and gain clarity on your money — all in one place.', he: 'מרכז הפיקוד הפיננסי האישי שלך. עקוב אחרי שווי נטו, נהל חשבונות, רשום הוצאות וקבל בהירות על הכסף שלך — הכל במקום אחד.' },
-  welcomeBullet1:     { en: 'Track assets & liabilities over time', he: 'עקוב אחרי נכסים והתחייבויות לאורך זמן' },
-  welcomeBullet2:     { en: 'Log recurring income & expenses', he: 'רשום הכנסות והוצאות חוזרות' },
+  welcomeSubtitle:    { en: 'Your personal finance command centre. Track net worth, investments, and real estate — log every expense, and gain clarity on your money — all in one place.', he: 'מרכז הפיקוד הפיננסי האישי שלך. עקוב אחרי שווי נטו, השקעות ונדל"ן — רשום כל הוצאה וקבל בהירות על הכסף שלך — הכל במקום אחד.' },
+  welcomeBullet1:     { en: 'Track assets, liabilities, investments & properties', he: 'עקוב אחרי נכסים, התחייבויות, השקעות ונדל"ן' },
+  welcomeBullet2:     { en: 'Log recurring & variable income and expenses', he: 'רשום הכנסות והוצאות קבועות ומשתנות' },
   welcomeBullet3:     { en: 'Get AI-powered financial insights', he: 'קבל תובנות פיננסיות מבוססות AI' },
   // Family
   familyTitle:        { en: "Who's in your household?", he: 'מי נמצא במשק הבית שלך?' },
@@ -39,9 +39,9 @@ const s = {
   // Accounts guide
   accountsTitle:      { en: 'Set up your accounts', he: 'הגדר את החשבונות שלך' },
   accountsDesc:       { en: 'Accounts represent everything you own (assets) or owe (liabilities) — bank accounts, investments, loans, and more.', he: 'חשבונות מייצגים את כל מה שיש לך (נכסים) או שאתה חייב (התחייבויות) — חשבונות בנק, השקעות, הלוואות ועוד.' },
-  accountsBullet1:    { en: 'Assets include bank accounts, brokerage portfolios, savings, and property.', he: 'נכסים כוללים חשבונות בנק, תיקי תיווך, חסכונות ונדל"ן.' },
+  accountsBullet1:    { en: 'Assets include bank accounts, brokerage portfolios, and savings.', he: 'נכסים כוללים חשבונות בנק, תיקי תיווך וחסכונות.' },
   accountsBullet2:    { en: 'Liabilities include mortgages, loans, and credit card balances.', he: 'התחייבויות כוללות משכנתאות, הלוואות ויתרות כרטיסי אשראי.' },
-  accountsBullet3:    { en: 'Head to the Accounts page to add your first account — it only takes a minute.', he: 'עבור לדף החשבונות כדי להוסיף את החשבון הראשון שלך — זה לוקח רק דקה.' },
+  accountsBullet3:    { en: 'Track investment holdings and real estate separately in the Investments and Properties pages.', he: 'עקוב אחרי פוזיציות בתיק ההשקעות ונכסי נדל"ן בנפרד בדפי ההשקעות והנדל"ן.' },
   // Snapshot guide
   snapshotTitle:      { en: 'Record your first snapshot', he: 'הוסף את התיעוד הראשון שלך' },
   snapshotDesc:       { en: "A monthly snapshot is a point-in-time record of all your account balances. It's how Finance Hub tracks your net worth over time.", he: 'תיעוד חודשי הוא רשומה נקודתית של כל יתרות החשבון שלך. כך Finance Hub עוקב אחרי שווי הנטו שלך לאורך זמן.' },
@@ -50,10 +50,10 @@ const s = {
   snapshotBullet3:    { en: "Over time you'll build a clear picture of your financial progress.", he: 'לאורך זמן תבנה תמונה ברורה של ההתקדמות הפיננסית שלך.' },
   // Expenses guide
   expensesTitle:      { en: 'Track your money flow', he: 'עקוב אחרי תזרים הכסף שלך' },
-  expensesDesc:       { en: 'Log your recurring income and expenses to understand exactly where your money comes from — and where it goes.', he: 'רשום הכנסות והוצאות חוזרות כדי להבין בדיוק מאיפה הכסף שלך מגיע — ולאן הוא הולך.' },
-  expensesBullet1:    { en: 'Add recurring expenses like rent, subscriptions, and insurance on the Expenses page.', he: 'הוסף הוצאות חוזרות כמו שכירות, מנויים וביטוח בדף ההוצאות.' },
-  expensesBullet2:    { en: 'Record income sources with gross and net amounts on the Income page.', he: 'רשום מקורות הכנסה עם סכומי ברוטו ונטו בדף ההכנסות.' },
-  expensesBullet3:    { en: 'Finance Hub uses these to calculate your monthly surplus and savings rate.', he: 'Finance Hub משתמש בהם כדי לחשב את העודף החודשי ושיעור החיסכון שלך.' },
+  expensesDesc:       { en: 'Log your income and expenses to understand exactly where your money comes from — and where it goes.', he: 'רשום הכנסות והוצאות כדי להבין בדיוק מאיפה הכסף שלך מגיע — ולאן הוא הולך.' },
+  expensesBullet1:    { en: 'Add recurring expenses like rent, subscriptions, and insurance on the Expenses page.', he: 'הוסף הוצאות קבועות כמו שכירות, מנויים וביטוח בדף ההוצאות.' },
+  expensesBullet2:    { en: 'Track day-to-day variable spending on the Transactions page — import from your credit card or log manually.', he: 'עקוב אחרי הוצאות משתנות יומיומיות בדף העסקאות — ייבא מכרטיס האשראי או רשום ידנית.' },
+  expensesBullet3:    { en: 'Record income sources with gross and net amounts on the Income page — Finance Hub calculates your monthly surplus automatically.', he: 'רשום מקורות הכנסה עם ברוטו ונטו בדף ההכנסות — Finance Hub מחשב את העודף החודשי אוטומטית.' },
   // Done
   doneTitle:          { en: "You're all set!", he: 'הכל מוכן!' },
   doneSubtitle:       { en: 'Your Finance Hub is ready. Start by adding your accounts and recording your first monthly snapshot.', he: 'Finance Hub שלך מוכן. התחל בהוספת חשבונות ותיעוד התיעוד החודשי הראשון שלך.' },

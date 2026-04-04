@@ -10,6 +10,8 @@ import {
   TrendingUp,
   Sparkles,
   LineChart,
+  CreditCard,
+  Building2,
   X,
   ChevronRight,
   ChevronLeft,
@@ -78,6 +80,26 @@ const TOUR_STEPS: TourStep[] = [
     },
   },
   {
+    page: 'investments',
+    icon: TrendingUp,
+    navId: 'tour-nav-investments',
+    title: { en: 'Investments', he: 'השקעות' },
+    body: {
+      en: 'Track your investment portfolio holdings. Upload an XLSX file from your broker to import positions, see gains/losses, and monitor management fees.',
+      he: 'עקוב אחרי תיק ההשקעות שלך. העלה קובץ XLSX מהברוקר שלך לייבוא פוזיציות, ראה רווחים/הפסדים ועקוב אחרי דמי ניהול.',
+    },
+  },
+  {
+    page: 'properties',
+    icon: Building2,
+    navId: 'tour-nav-properties',
+    title: { en: 'Properties', he: 'נדל״ן' },
+    body: {
+      en: 'Track your real estate holdings. Add properties with purchase price, current value, and mortgage details to see equity and overall net worth contribution.',
+      he: 'עקוב אחרי הנכסים הנדל"ניים שלך. הוסף נכסים עם מחיר רכישה, שווי נוכחי ופרטי משכנתא כדי לראות הון עצמי ותרומה לשווי הנטו.',
+    },
+  },
+  {
     page: 'expenses',
     icon: Receipt,
     navId: 'tour-nav-expenses',
@@ -85,6 +107,16 @@ const TOUR_STEPS: TourStep[] = [
     body: {
       en: 'Log your recurring fixed costs — rent, insurance, subscriptions. Finance Hub tracks totals by category and shows your monthly burn rate.',
       he: 'רשום הוצאות קבועות חוזרות — שכירות, ביטוח, מנויים. Finance Hub עוקב אחרי סכומים לפי קטגוריה ומציג את ההוצאה החודשית.',
+    },
+  },
+  {
+    page: 'transactions',
+    icon: CreditCard,
+    navId: 'tour-nav-transactions',
+    title: { en: 'Transactions', he: 'עסקאות' },
+    body: {
+      en: 'Log and categorise your day-to-day spending. Track variable expenses across categories to understand where your money actually goes each month.',
+      he: 'תעד וקטלג את ההוצאות היומיומיות שלך. עקוב אחרי הוצאות משתנות לפי קטגוריות כדי להבין לאן הכסף שלך הולך בכל חודש.',
     },
   },
   {
