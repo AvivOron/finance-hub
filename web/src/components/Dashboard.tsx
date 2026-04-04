@@ -22,6 +22,7 @@ import { AppData } from '../types'
 import { formatCurrency, formatCurrencyShort, formatMonthLabel, formatMonthFull, cn } from '../utils'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { useCategories } from '@/hooks/useCategories'
 import { t, tn } from '@/translations'
 
 interface DashboardProps {
@@ -167,6 +168,8 @@ function rollingAvg(byMonth: Record<string, number>, months: number): number | n
 export function Dashboard({ data, onNavigate, txSummary, properties = [] }: DashboardProps) {
   const { currency } = useCurrency()
   const { lang } = useLanguage()
+  const { categoryConfig } = useCategories()
+  const catLabel = (slug: string) => categoryConfig[slug]?.label ?? (slug.charAt(0).toUpperCase() + slug.slice(1))
 
   // Hide recharts active shape styling
   useEffect(() => {
@@ -640,7 +643,7 @@ export function Dashboard({ data, onNavigate, txSummary, properties = [] }: Dash
                       axisLine={false}
                       tickLine={false}
                       width={90}
-                      tickFormatter={(v: string) => v.charAt(0).toUpperCase() + v.slice(1)}
+                      tickFormatter={(v: string) => catLabel(v)}
                     />
                     <Tooltip
                       contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px' }}
@@ -655,7 +658,7 @@ export function Dashboard({ data, onNavigate, txSummary, properties = [] }: Dash
                         const color = CATEGORY_COLORS[label] ?? '#6b7280'
                         return (
                           <div style={{ backgroundColor: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px', minWidth: 160 }}>
-                            <p style={{ color: '#e5e7eb', fontWeight: 600, marginBottom: 8 }}>{label.charAt(0).toUpperCase() + label.slice(1)}</p>
+                            <p style={{ color: '#e5e7eb', fontWeight: 600, marginBottom: 8 }}>{catLabel(label)}</p>
                             {recurring > 0 && <p style={{ color, fontSize: 12, marginBottom: 4 }}>● {t('dashboard.card.recurring', lang)}: {fmt(recurring)}</p>}
                             {variable > 0 && <p style={{ color: color + '99', fontSize: 12, marginBottom: 4 }}>● {t('dashboard.card.variable', lang)}: {fmt(variable)}</p>}
                             {recurring > 0 && variable > 0 && <p style={{ color: '#e5e7eb', fontSize: 12, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 6, marginTop: 4 }}>{t('dashboard.card.combined', lang)}: {fmt(recurring + variable)}</p>}

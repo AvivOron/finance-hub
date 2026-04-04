@@ -10,7 +10,7 @@ import { formatCurrency, getCurrentMonth, formatMonthFull, cn } from '../utils'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { t } from '@/translations'
-import { CATEGORY_CONFIG } from './Expenses'
+import { useCategories, CategoryConfigMap } from '@/hooks/useCategories'
 
 interface TransactionsProps {
   data: AppData
@@ -43,9 +43,9 @@ function StatusBadge({ status, lang }: { status: string; lang: string }) {
   )
 }
 
-function CategoryBadge({ category }: { category?: string }) {
+function CategoryBadge({ category, config }: { category?: string; config: CategoryConfigMap }) {
   if (!category) return null
-  const cfg = CATEGORY_CONFIG[category as ExpenseCategory]
+  const cfg = config[category as ExpenseCategory]
   if (!cfg) return <span className="text-xs text-slate-400">{category}</span>
   return (
     <span className={cn('text-xs px-2 py-0.5 rounded border flex items-center gap-1 w-fit', cfg.color)}>
@@ -58,6 +58,7 @@ export function Transactions({ data }: TransactionsProps) {
   const { currency } = useCurrency()
   const { lang } = useLanguage()
   const fmt = (v: number) => formatCurrency(v, currency)
+  const { categoryConfig: resolvedConfig } = useCategories()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [month, setMonth] = useState(getCurrentMonth())
@@ -196,7 +197,7 @@ export function Transactions({ data }: TransactionsProps) {
       .filter((x): x is [string, { name: string; category: string }] => x !== null)
   ).entries()]
 
-  const availableExpensesByCategory = (Object.keys(CATEGORY_CONFIG) as ExpenseCategory[])
+  const availableExpensesByCategory = (Object.keys(resolvedConfig) as ExpenseCategory[])
     .map(cat => ({ cat, items: availableExpenses.filter(([, e]) => e.category === cat) }))
     .filter(g => g.items.length > 0)
 
@@ -350,7 +351,7 @@ export function Transactions({ data }: TransactionsProps) {
                 >
                   <option value="">{t('tx.filter.allCategories', lang)}</option>
                   {availableCategories.map(c => (
-                    <option key={c} value={c}>{CATEGORY_CONFIG[c as ExpenseCategory]?.label ?? c}</option>
+                    <option key={c} value={c}>{resolvedConfig[c as ExpenseCategory]?.label ?? c}</option>
                   ))}
                 </select>
                 <svg className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-slate-400 ${lang === 'he' ? 'left-2' : 'right-2'}`} width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -365,7 +366,7 @@ export function Transactions({ data }: TransactionsProps) {
                 >
                   <option value="">{t('tx.filter.allExpenses', lang)}</option>
                   {availableExpensesByCategory.map(({ cat, items }) => (
-                    <optgroup key={cat} label={CATEGORY_CONFIG[cat].label}>
+                    <optgroup key={cat} label={resolvedConfig[cat].label}>
                       {items.map(([id, e]) => (
                         <option key={id} value={id}>{e.name}</option>
                       ))}
@@ -435,6 +436,7 @@ export function Transactions({ data }: TransactionsProps) {
               onDelete={() => deleteTransaction(tx.id)}
               fmt={fmt}
               lang={lang}
+              categoryConfig={resolvedConfig}
             />
           ))}
         </div>
@@ -453,9 +455,10 @@ interface TransactionRowProps {
   onDelete: () => void
   fmt: (v: number) => string
   lang: string
+  categoryConfig: CategoryConfigMap
 }
 
-function TransactionRow({ tx, recurringExpenses, variableExpenses, expanded, onToggle, onUpdate, onDelete, fmt, lang }: TransactionRowProps) {
+function TransactionRow({ tx, recurringExpenses, variableExpenses, expanded, onToggle, onUpdate, onDelete, fmt, lang, categoryConfig }: TransactionRowProps) {
   const matchedRecurring = recurringExpenses.find(e => e.id === tx.recurringExpenseId)
   const matchedVariable = variableExpenses.find(e => e.id === tx.recurringExpenseId)
   const matchedExpense = matchedRecurring ?? matchedVariable
@@ -511,7 +514,7 @@ function TransactionRow({ tx, recurringExpenses, variableExpenses, expanded, onT
               </span>
             </div>
           ) : tx.expenseCategory ? (
-            <CategoryBadge category={tx.expenseCategory} />
+            <CategoryBadge category={tx.expenseCategory} config={categoryConfig} />
           ) : null}
         </div>
 
@@ -552,10 +555,10 @@ function TransactionRow({ tx, recurringExpenses, variableExpenses, expanded, onT
                   className={`appearance-none w-full bg-[#09090f] border border-white/10 text-slate-300 text-xs rounded-lg py-2 ${lang === 'he' ? 'pr-3 pl-7' : 'pl-3 pr-7'}`}
                 >
                   <option value="">{t('tx.map.none', lang)}</option>
-                  {(Object.keys(CATEGORY_CONFIG) as ExpenseCategory[])
+                  {(Object.keys(categoryConfig) as ExpenseCategory[])
                     .filter(cat => recurringExpenses.some(e => e.active && e.category === cat))
                     .map(cat => (
-                      <optgroup key={cat} label={CATEGORY_CONFIG[cat].label}>
+                      <optgroup key={cat} label={categoryConfig[cat].label}>
                         {recurringExpenses.filter(e => e.active && e.category === cat).map(e => (
                           <option key={e.id} value={e.id}>{e.name} (₪{e.amount})</option>
                         ))}
@@ -581,10 +584,10 @@ function TransactionRow({ tx, recurringExpenses, variableExpenses, expanded, onT
                   className={`appearance-none w-full bg-[#09090f] border border-white/10 text-slate-300 text-xs rounded-lg py-2 ${lang === 'he' ? 'pr-3 pl-7' : 'pl-3 pr-7'}`}
                 >
                   <option value="">{t('tx.map.none', lang)}</option>
-                  {(Object.keys(CATEGORY_CONFIG) as ExpenseCategory[])
+                  {(Object.keys(categoryConfig) as ExpenseCategory[])
                     .filter(cat => variableExpenses.some(e => e.active && e.category === cat))
                     .map(cat => (
-                      <optgroup key={cat} label={CATEGORY_CONFIG[cat].label}>
+                      <optgroup key={cat} label={categoryConfig[cat].label}>
                         {variableExpenses.filter(e => e.active && e.category === cat).map(e => (
                           <option key={e.id} value={e.id}>{e.name}</option>
                         ))}
@@ -605,8 +608,8 @@ function TransactionRow({ tx, recurringExpenses, variableExpenses, expanded, onT
                   className={`appearance-none w-full bg-[#09090f] border border-white/10 text-slate-300 text-xs rounded-lg py-2 disabled:opacity-40 disabled:cursor-not-allowed ${lang === 'he' ? 'pr-3 pl-7' : 'pl-3 pr-7'}`}
                 >
                   <option value="">{t('tx.map.none', lang)}</option>
-                  {(Object.keys(CATEGORY_CONFIG) as ExpenseCategory[]).map(c => (
-                    <option key={c} value={c}>{CATEGORY_CONFIG[c].label}</option>
+                  {(Object.keys(categoryConfig) as ExpenseCategory[]).map(c => (
+                    <option key={c} value={c}>{categoryConfig[c].label}</option>
                   ))}
                 </select>
                 <svg className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-slate-400 ${lang === 'he' ? 'left-2' : 'right-2'}`} width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>

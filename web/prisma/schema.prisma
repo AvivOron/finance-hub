@@ -51,6 +51,18 @@ model VerificationToken {
 
 // ─── Application models ──────────────────────────────────────────────────────
 
+// Editable expense categories — slug matches the string stored in UserData JSON and Transaction rows
+model ExpenseCategory {
+  id        String   @id @default(cuid())
+  slug      String   @unique // e.g. "housing", "utilities" — used as the FK everywhere
+  label     String   // display name, editable
+  icon      String   // lucide icon name, e.g. "Home", "Zap"
+  color     String   // tailwind classes, e.g. "text-blue-400 bg-blue-500/10 border-blue-500/20"
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?

@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   Plus, Pencil, Trash2, X, Check,
-  Home, Baby, RefreshCw, Shield, Zap, Car, PawPrint, MoreHorizontal,
-  ToggleLeft, ToggleRight, ShoppingCart, Sparkles, TrendingUp, AlertTriangle
+  RefreshCw,
+  ToggleLeft, ToggleRight, TrendingUp, AlertTriangle
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -22,6 +22,7 @@ import { useCurrency } from '../context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { t, tn } from '@/translations'
 import { Modal } from './Accounts'
+import { useCategories, CategoryConfigMap } from '@/hooks/useCategories'
 
 interface ExpensesProps {
   expenses: RecurringExpense[]
@@ -50,29 +51,11 @@ const emptyForm: FormState = {
   notes: ''
 }
 
-export const CATEGORY_CONFIG: Record<
-  ExpenseCategory,
-  { label: string; icon: React.ReactNode; color: string }
-> = {
-  housing:       { label: 'Housing',       icon: <Home size={14} />,           color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
-  childcare:     { label: 'Childcare',     icon: <Baby size={14} />,           color: 'text-pink-400 bg-pink-500/10 border-pink-500/20' },
-  subscriptions: { label: 'Subscriptions', icon: <RefreshCw size={14} />,      color: 'text-violet-400 bg-violet-500/10 border-violet-500/20' },
-  insurance:     { label: 'Insurance',     icon: <Shield size={14} />,         color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-  utilities:     { label: 'Utilities',     icon: <Zap size={14} />,            color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
-  transport:     { label: 'Transport',     icon: <Car size={14} />,            color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
-  pets:          { label: 'Pets',          icon: <PawPrint size={14} />,       color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' },
-  groceries:     { label: 'Groceries',     icon: <ShoppingCart size={14} />,   color: 'text-green-400 bg-green-500/10 border-green-500/20' },
-  lifestyle:     { label: 'Lifestyle',     icon: <Sparkles size={14} />,       color: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
-  other:         { label: 'Other',         icon: <MoreHorizontal size={14} />, color: 'text-gray-400 bg-gray-500/10 border-gray-500/20' }
-}
-
-const CATEGORIES = Object.keys(CATEGORY_CONFIG) as ExpenseCategory[]
-
 function monthlyAmount(expense: RecurringExpense): number {
   return expense.billingCycle === 'yearly' ? expense.amount / 12 : expense.amount
 }
 
-function calculateCategoryData(expenses: RecurringExpense[]) {
+function calculateCategoryData(expenses: RecurringExpense[], categoryConfig: CategoryConfigMap) {
   const active = expenses.filter((e) => e.active)
   const byCategory = active.reduce<Record<string, number>>((acc, expense) => {
     const amount = monthlyAmount(expense)
@@ -83,7 +66,7 @@ function calculateCategoryData(expenses: RecurringExpense[]) {
     .map(([category, amount]) => ({
       name: category,
       amount,
-      label: CATEGORY_CONFIG[category as ExpenseCategory]?.label ?? category
+      label: categoryConfig[category]?.label ?? category
     }))
     .sort((a, b) => b.amount - a.amount)
 }
@@ -107,6 +90,7 @@ function rollingAvgBestEffort(byMonth: Record<string, number>, months: number): 
 export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyMembers, onSave, onSaveVariable, txSummary }: ExpensesProps) {
   const { currency } = useCurrency()
   const { lang } = useLanguage()
+  const { categoryConfig: resolvedConfig, categories: resolvedCategories } = useCategories()
   const fmt = (v: number) => formatCurrency(v, currency)
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -123,9 +107,7 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
   const [varDeleteConfirm, setVarDeleteConfirm] = useState<string | null>(null)
   const [savingVar, setSavingVar] = useState(false)
   const [showVariable, setShowVariable] = useState(true)
-  const categoryRefs = useRef<Record<ExpenseCategory, HTMLDivElement | null>>(
-    {} as Record<ExpenseCategory, HTMLDivElement | null>
-  )
+  const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const familyMembers: FamilyMember[] = rawFamilyMembers.map((m: any) =>
     typeof m === 'string' ? { name: m, isChild: false } : (m as FamilyMember)
@@ -142,7 +124,7 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
   const activeExpenses = filteredExpenses.filter((e) => e.active)
   const totalMonthly = activeExpenses.reduce((sum, e) => sum + monthlyAmount(e), 0)
   const totalYearly = totalMonthly * 12
-  const categoryData = calculateCategoryData(filteredExpenses)
+  const categoryData = calculateCategoryData(filteredExpenses, resolvedConfig)
 
   // Compute 12-month average of all variable spending (mapped variable expenses + unmapped categories)
   const variableExpenseIds = new Set(filteredVariableExpenses.map(e => e.id))
@@ -183,20 +165,23 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
       chartData.push({
         name: cat,
         amount: 0,
-        label: CATEGORY_CONFIG[cat as ExpenseCategory]?.label ?? cat,
+        label: resolvedConfig[cat]?.label ?? cat,
         varAmount: avg
       })
     }
   }
   chartData.sort((a, b) => (b.amount + b.varAmount) - (a.amount + a.varAmount))
 
-  const byCategory = CATEGORIES.reduce<Record<ExpenseCategory, RecurringExpense[]>>(
-    (acc, cat) => {
-      acc[cat] = filteredExpenses.filter((e) => e.category === cat)
-      return acc
-    },
-    {} as Record<ExpenseCategory, RecurringExpense[]>
-  )
+  // Group by category slug — don't depend on resolvedCategories being loaded
+  const byCategory = filteredExpenses.reduce<Record<string, RecurringExpense[]>>((acc, e) => {
+    acc[e.category] = acc[e.category] ?? []
+    acc[e.category].push(e)
+    return acc
+  }, {})
+  // Order: DB order when loaded, otherwise whatever order slugs appear in data
+  const orderedCategories = resolvedCategories.length > 0
+    ? resolvedCategories.filter(cat => byCategory[cat])
+    : Object.keys(byCategory)
 
   // Find last month that has any recurring expense transaction data
   const lastTxMonth = (() => {
@@ -519,7 +504,7 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
         </div>
       ) : (
         <div className="space-y-4">
-          {CATEGORIES.filter((cat) => byCategory[cat].length > 0)
+          {orderedCategories.filter((cat) => byCategory[cat].length > 0)
             .sort((a, b) => {
               const aMonthly = byCategory[a]
                 .filter((e) => e.active)
@@ -534,7 +519,7 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
               const catMonthly = items
                 .filter((e) => e.active)
                 .reduce((s, e) => s + monthlyAmount(e), 0)
-              const cfg = CATEGORY_CONFIG[cat]
+              const cfg = resolvedConfig[cat] ?? { label: cat, icon: null, color: 'text-gray-400 bg-gray-500/10 border-gray-500/20' }
               return (
                 <div
                   key={cat}
@@ -729,12 +714,13 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-1.5">{t('expenses.modal.categoryLabel', lang)}</label>
               <div className="grid grid-cols-2 gap-2">
-                {CATEGORIES.map(cat => {
-                  const cfg = CATEGORY_CONFIG[cat]
+                {resolvedCategories.map(cat => {
+                  const cfg = resolvedConfig[cat]
+                  if (!cfg) return null
                   return (
                     <button
                       key={cat}
-                      onClick={() => setVarForm({ ...varForm, category: cat })}
+                      onClick={() => setVarForm({ ...varForm, category: cat as ExpenseCategory })}
                       className={cn(
                         'flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-all text-left',
                         varForm.category === cat
@@ -851,12 +837,13 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-1.5">{t('expenses.modal.categoryLabel', lang)}</label>
               <div className="grid grid-cols-2 gap-2">
-                {CATEGORIES.map((cat) => {
-                  const cfg = CATEGORY_CONFIG[cat]
+                {resolvedCategories.map((cat) => {
+                  const cfg = resolvedConfig[cat]
+                  if (!cfg) return null
                   return (
                     <button
                       key={cat}
-                      onClick={() => setForm({ ...form, category: cat })}
+                      onClick={() => setForm({ ...form, category: cat as ExpenseCategory })}
                       className={cn(
                         'flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-all text-left',
                         form.category === cat
@@ -930,12 +917,10 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
 }
 
 function VariableExpenseRow({
-  label, byMonth, icon, color, actions, fmt, lang, t: tFn
+  label, byMonth, actions, fmt, lang, t: tFn
 }: {
   label: string
   byMonth: Record<string, number>
-  icon: React.ReactNode
-  color: string
   actions?: React.ReactNode
   fmt: (v: number) => string
   lang: string
@@ -948,9 +933,6 @@ function VariableExpenseRow({
   const avg12 = rollingAvg(byMonth, 12)
   return (
     <div className="flex items-center gap-4 px-5 py-3.5 group">
-      <span className={cn('flex items-center justify-center w-6 h-6 rounded-md border text-xs shrink-0', color)}>
-        {icon}
-      </span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-200">{label}</p>
       </div>
@@ -999,8 +981,10 @@ function VariableExpensesList({
   fmt: (v: number) => string
   t: typeof import('@/translations').t
 }) {
+  const { categoryConfig: resolvedConfig, categories: resolvedCategories } = useCategories()
+
   const unmappedRows = Object.entries(txSummary?.byCategory ?? {})
-    .map(([cat, byMonth]) => ({ cat: cat as ExpenseCategory, byMonth }))
+    .map(([cat, byMonth]) => ({ cat, byMonth }))
     .filter(({ byMonth }) => Object.keys(byMonth).length > 0)
 
   const hasAnything = variableExpenses.length > 0 || unmappedRows.length > 0
@@ -1014,13 +998,17 @@ function VariableExpensesList({
     )
   }
 
-  // Group variable expenses by category
-  const byCategory = CATEGORIES.reduce<Record<ExpenseCategory, VariableExpense[]>>(
-    (acc, cat) => { acc[cat] = variableExpenses.filter(e => e.category === cat); return acc },
-    {} as Record<ExpenseCategory, VariableExpense[]>
-  )
+  // Group by category slug — don't depend on resolvedCategories being loaded
+  const byCategory = variableExpenses.reduce<Record<string, VariableExpense[]>>((acc, e) => {
+    acc[e.category] = acc[e.category] ?? []
+    acc[e.category].push(e)
+    return acc
+  }, {})
+  const orderedCategories = resolvedCategories.length > 0
+    ? resolvedCategories.filter(cat => byCategory[cat])
+    : Object.keys(byCategory)
 
-  const categoriesWithItems = CATEGORIES.filter(cat => byCategory[cat].length > 0)
+  const categoriesWithItems = orderedCategories
 
   // Merge byMonth for a category's variable expenses
   function catByMonth(items: VariableExpense[]): Record<string, number> {
@@ -1040,7 +1028,7 @@ function VariableExpensesList({
     <div className="space-y-4">
       {categoriesWithItems.map(cat => {
         const items = byCategory[cat]
-        const cfg = CATEGORY_CONFIG[cat]
+        const cfg = resolvedConfig[cat] ?? { label: cat, icon: null, color: 'text-gray-400 bg-gray-500/10 border-gray-500/20' }
         const catTotal = catByMonth(items)
         const catAvg12 = rollingAvgBestEffort(catTotal, 12)
 
@@ -1087,8 +1075,6 @@ function VariableExpensesList({
                     <VariableExpenseRow
                       label={ve.name}
                       byMonth={byMonth}
-                      icon={cfg.icon}
-                      color={cfg.color}
                       actions={actions}
                       fmt={fmt}
                       lang={lang}
@@ -1121,8 +1107,6 @@ function VariableExpensesList({
             <VariableExpenseRow
               label={tFn('expenses.variable.unmappedHeader', lang as any)}
               byMonth={mergedByMonth}
-              icon={<span className="text-xs">?</span>}
-              color="border-white/10 bg-white/5 text-slate-400"
               fmt={fmt}
               lang={lang}
               t={tFn}

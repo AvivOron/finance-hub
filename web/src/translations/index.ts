@@ -268,16 +268,6 @@ const translations: Record<string, { en: string; he: string }> = {
   'expenses.drift.warning': { en: 'Actual vs. set amount differs by {pct}% last month ({actual} actual vs. {set} set)', he: 'הסכום בפועל שונה ב-{pct}% מהסכום שהוגדר בחודש האחרון ({actual} בפועל לעומת {set} שהוגדר)' },
   'expenses.drift.update': { en: 'Update amount', he: 'עדכן סכום' },
   'expenses.drift.ignore': { en: 'Ignore', he: 'התעלם' },
-  'categories.housing': { en: 'Housing', he: 'דיור' },
-  'categories.childcare': { en: 'Childcare', he: 'טיפול בילדים' },
-  'categories.subscriptions': { en: 'Subscriptions', he: 'מנויים' },
-  'categories.insurance': { en: 'Insurance', he: 'ביטוח' },
-  'categories.utilities': { en: 'Utilities', he: 'שירותים' },
-  'categories.transport': { en: 'Transport', he: 'תחבורה' },
-  'categories.pets': { en: 'Pets', he: 'חיות מחמד' },
-  'categories.groceries': { en: 'Groceries', he: 'קניות' },
-  'categories.lifestyle': { en: 'Lifestyle', he: 'סגנון חיים' },
-  'categories.other': { en: 'Other', he: 'אחר' },
 
   // Income
   'income.title': { en: 'Income', he: 'הכנסות' },
