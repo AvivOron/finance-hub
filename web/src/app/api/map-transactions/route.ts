@@ -12,6 +12,7 @@ const client = new Anthropic()
 
 interface MappingResult {
   transactionId: string
+  // Claude returns a single id — we split it into the correct column after matching
   recurringExpenseId?: string
   expenseCategory?: ExpenseCategory
   mappingStatus: 'auto' | 'unmapped'
@@ -96,12 +97,17 @@ export async function POST(req: NextRequest) {
     // Map using Claude
     const mappings = await mapWithClaude(transactions, recurringExpenses ?? [], variableExpenses ?? [])
 
-    // Apply mappings to transactions
+    const variableExpenseIdSet = new Set((variableExpenses ?? []).map(e => e.id))
+
+    // Apply mappings to transactions — route the id Claude returned to the correct column
     const mapped: Transaction[] = transactions.map(t => {
       const m = mappings.find(r => r.transactionId === t.id)
+      const matchedId = m?.recurringExpenseId ?? undefined
+      const isVariable = matchedId != null && variableExpenseIdSet.has(matchedId)
       return {
         ...t,
-        recurringExpenseId: m?.recurringExpenseId ?? undefined,
+        recurringExpenseId: matchedId && !isVariable ? matchedId : undefined,
+        variableExpenseId: matchedId && isVariable ? matchedId : undefined,
         expenseCategory: m?.expenseCategory ?? undefined,
         mappingStatus: m?.mappingStatus ?? 'unmapped',
       }
@@ -125,6 +131,7 @@ export async function POST(req: NextRequest) {
         notes: t.notes ?? null,
         expenseCategory: t.expenseCategory ?? null,
         recurringExpenseId: t.recurringExpenseId ?? null,
+        variableExpenseId: t.variableExpenseId ?? null,
         mappingStatus: t.mappingStatus,
         month: t.month,
       })),

@@ -124,16 +124,20 @@ model Transaction {
   accountLabel        String?
   notes               String?
   expenseCategory     String?
-  recurringExpenseId  String?
+  recurringExpenseId  String?  // FK → RecurringExpense (fixed recurring bills)
+  variableExpenseId   String?  // FK → VariableExpense (variable spend buckets)
   overrideAmount      Float?   // user-corrected amount (replaces amount for calculations)
   mappingStatus       String   @default("unmapped") // auto | manual | unmapped | ignored
   importedAt          DateTime @default(now())
   month               String   // YYYY-MM billing month
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recurringExpense  RecurringExpense? @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
+  variableExpense   VariableExpense?  @relation(fields: [variableExpenseId], references: [id], onDelete: SetNull)
 
   @@index([userId, month])
   @@index([userId, mappingStatus])
+  @@index([userId, variableExpenseId])
 }
 
 // Real estate / property assets tracked separately from accounts
@@ -240,7 +244,8 @@ model RecurringExpense {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
 
   @@index([userId])
 }
@@ -253,7 +258,8 @@ model VariableExpense {
   owner    String?
   active   Boolean @default(true)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
 
   @@index([userId])
 }

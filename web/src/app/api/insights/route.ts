@@ -219,25 +219,25 @@ export async function POST(request: Request) {
     prisma.property.findMany({ where: { userId: effectiveUserId }, orderBy: { createdAt: 'asc' } }).catch(() => []),
     prisma.transaction.findMany({
       where: { userId: effectiveUserId, mappingStatus: { not: 'ignored' } },
-      select: { month: true, amount: true, overrideAmount: true, expenseCategory: true, recurringExpenseId: true },
+      select: { month: true, amount: true, overrideAmount: true, expenseCategory: true, recurringExpenseId: true, variableExpenseId: true },
     }).catch(() => []),
   ])
 
   const properties = dbProperties as Property[]
 
-  // Mirror Expenses.tsx logic: variable expense IDs from AppData, recurring expense IDs excluded
-  const variableExpenseIds = new Set((data.variableExpenses ?? []).map((e: any) => e.id))
   // byExpense: variable-mapped txns grouped by expenseId → month → total
   const byExpense: Record<string, Record<string, number>> = {}
   // byCategory: unmapped txns grouped by category → month → total
   const byCategory: Record<string, Record<string, number>> = {}
   for (const tx of allTxns) {
     const amt = ((tx.overrideAmount ?? tx.amount) as number)
+    const vid = (tx as any).variableExpenseId as string | null
     const rid = tx.recurringExpenseId as string | null
-    if (rid && variableExpenseIds.has(rid)) {
-      if (!byExpense[rid]) byExpense[rid] = {}
-      byExpense[rid][tx.month] = (byExpense[rid][tx.month] ?? 0) + amt
+    if (vid) {
+      if (!byExpense[vid]) byExpense[vid] = {}
+      byExpense[vid][tx.month] = (byExpense[vid][tx.month] ?? 0) + amt
     } else if (!rid) {
+      // not linked to any expense — bucket by category
       const cat = (tx.expenseCategory as string | null) ?? 'other'
       if (!byCategory[cat]) byCategory[cat] = {}
       byCategory[cat][tx.month] = (byCategory[cat][tx.month] ?? 0) + amt

@@ -46,10 +46,9 @@ function buildHtml(
   }
 
   // Variable expense avg: 12-month rolling average of non-ignored transactions
-  const variableExpenseIds = new Set((data.variableExpenses ?? []).map((e) => e.id))
   const avgVariableTotal = (() => {
     const nonIgnored = transactions.filter(
-      (tx) => tx.mappingStatus !== 'ignored' && variableExpenseIds.has((tx as any).recurringExpenseId ?? '')
+      (tx) => tx.mappingStatus !== 'ignored' && !!(tx as any).variableExpenseId
     )
     // sum by month
     const byMonth: Record<string, number> = {}

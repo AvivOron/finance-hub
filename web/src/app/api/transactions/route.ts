@@ -35,7 +35,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const effectiveUserId = await getEffectiveUserId(session.user.id)
-  const { id, recurringExpenseId, expenseCategory, mappingStatus, overrideAmount } = await req.json()
+  const { id, recurringExpenseId, variableExpenseId, expenseCategory, mappingStatus, overrideAmount } = await req.json()
 
   if (!id) {
     return NextResponse.json({ error: 'Transaction id required' }, { status: 400 })
@@ -50,6 +50,7 @@ export async function PATCH(req: NextRequest) {
     where: { id },
     data: {
       recurringExpenseId: recurringExpenseId ?? null,
+      variableExpenseId: variableExpenseId ?? null,
       expenseCategory: expenseCategory ?? null,
       mappingStatus: mappingStatus ?? existing.mappingStatus,
       ...(overrideAmount !== undefined ? { overrideAmount: overrideAmount === null ? null : Number(overrideAmount) } : {}),

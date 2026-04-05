@@ -7,7 +7,7 @@ import { getEffectiveUserId } from '@/lib/household'
 export const runtime = 'nodejs'
 
 // GET /api/transactions/summary
-// Returns per-month totals grouped by recurringExpenseId (or expenseCategory as fallback)
+// Returns per-month totals grouped by expense id (or expenseCategory as fallback)
 // Response: { byExpense: Record<expenseId, Record<month, number>>, byCategory: Record<category, Record<month, number>> }
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -27,6 +27,7 @@ export async function GET() {
       amount: true,
       overrideAmount: true,
       recurringExpenseId: true,
+      variableExpenseId: true,
       expenseCategory: true,
     },
   })
@@ -38,9 +39,10 @@ export async function GET() {
 
   for (const tx of transactions) {
     const amt = tx.overrideAmount ?? tx.amount
-    if (tx.recurringExpenseId) {
-      if (!byExpense[tx.recurringExpenseId]) byExpense[tx.recurringExpenseId] = {}
-      byExpense[tx.recurringExpenseId][tx.month] = (byExpense[tx.recurringExpenseId][tx.month] ?? 0) + amt
+    const linkedId = tx.recurringExpenseId ?? tx.variableExpenseId ?? null
+    if (linkedId) {
+      if (!byExpense[linkedId]) byExpense[linkedId] = {}
+      byExpense[linkedId][tx.month] = (byExpense[linkedId][tx.month] ?? 0) + amt
     } else {
       const key = tx.expenseCategory ?? 'unlinked'
       if (!byCategory[key]) byCategory[key] = {}

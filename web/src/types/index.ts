@@ -115,7 +115,8 @@ export interface Transaction {
   accountLabel?: string // e.g. "הפועלים 640-10524"
   notes?: string
   expenseCategory?: ExpenseCategory
-  recurringExpenseId?: string // matched recurring expense
+  recurringExpenseId?: string // FK → RecurringExpense (fixed bills)
+  variableExpenseId?: string  // FK → VariableExpense (spend buckets)
   mappingStatus: TransactionMappingStatus
   importedAt: string // ISO timestamp
   month: string // YYYY-MM billing month from file

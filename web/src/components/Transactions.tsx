@@ -143,7 +143,7 @@ export function Transactions({ data }: TransactionsProps) {
 
   async function updateTransaction(
     id: string,
-    patch: { recurringExpenseId?: string | null; expenseCategory?: string | null; mappingStatus?: string; overrideAmount?: number | null }
+    patch: { recurringExpenseId?: string | null; variableExpenseId?: string | null; expenseCategory?: string | null; mappingStatus?: string; overrideAmount?: number | null }
   ) {
     const res = await fetch('/finance-hub/api/transactions', {
       method: 'PATCH',
@@ -164,14 +164,14 @@ export function Transactions({ data }: TransactionsProps) {
   const effectiveCategory = (tx: Transaction) =>
     tx.expenseCategory
     ?? recurringExpenses.find(e => e.id === tx.recurringExpenseId)?.category
-    ?? variableExpenses.find(e => e.id === tx.recurringExpenseId)?.category
+    ?? variableExpenses.find(e => e.id === tx.variableExpenseId)?.category
     ?? null
 
   const matchesLinkFilter = (t: Transaction) => {
     if (linkFilter === 'all') return true
-    if (linkFilter === 'unlinked') return !t.recurringExpenseId
-    if (linkFilter === 'recurring') return !!recurringExpenses.find(e => e.id === t.recurringExpenseId)
-    if (linkFilter === 'variable') return !!variableExpenses.find(e => e.id === t.recurringExpenseId)
+    if (linkFilter === 'unlinked') return !t.recurringExpenseId && !t.variableExpenseId
+    if (linkFilter === 'recurring') return !!t.recurringExpenseId
+    if (linkFilter === 'variable') return !!t.variableExpenseId
     return true
   }
 
@@ -179,17 +179,17 @@ export function Transactions({ data }: TransactionsProps) {
     (filter === 'all' || t.mappingStatus === filter) &&
     (cardFilter === null || t.cardLast4 === cardFilter) &&
     (categoryFilter === null || effectiveCategory(t) === categoryFilter) &&
-    (expenseFilter === null || t.recurringExpenseId === expenseFilter) &&
+    (expenseFilter === null || t.recurringExpenseId === expenseFilter || t.variableExpenseId === expenseFilter) &&
     matchesLinkFilter(t)
   )
 
   const availableCategories = [...new Set(transactions.map(effectiveCategory).filter(Boolean))] as string[]
   const availableExpenses = [...new Map(
     transactions
-      .filter(t => t.recurringExpenseId)
+      .filter(t => t.recurringExpenseId || t.variableExpenseId)
       .map(t => {
-        const exp = recurringExpenses.find(e => e.id === t.recurringExpenseId)
-          ?? variableExpenses.find(e => e.id === t.recurringExpenseId)
+        const exp = (t.recurringExpenseId ? recurringExpenses.find(e => e.id === t.recurringExpenseId) : null)
+          ?? (t.variableExpenseId ? variableExpenses.find(e => e.id === t.variableExpenseId) : null)
         if (!exp) return null
         if (categoryFilter && exp.category !== categoryFilter) return null
         return [exp.id, { name: exp.name, category: exp.category }] as [string, { name: string; category: string }]
@@ -204,7 +204,7 @@ export function Transactions({ data }: TransactionsProps) {
   const baseFiltered = transactions.filter(t =>
     (cardFilter === null || t.cardLast4 === cardFilter) &&
     (categoryFilter === null || effectiveCategory(t) === categoryFilter) &&
-    (expenseFilter === null || t.recurringExpenseId === expenseFilter) &&
+    (expenseFilter === null || t.recurringExpenseId === expenseFilter || t.variableExpenseId === expenseFilter) &&
     matchesLinkFilter(t)
   )
 
@@ -451,7 +451,7 @@ interface TransactionRowProps {
   variableExpenses: VariableExpense[]
   expanded: boolean
   onToggle: () => void
-  onUpdate: (patch: { recurringExpenseId?: string | null; expenseCategory?: string | null; mappingStatus?: string; overrideAmount?: number | null }) => void
+  onUpdate: (patch: { recurringExpenseId?: string | null; variableExpenseId?: string | null; expenseCategory?: string | null; mappingStatus?: string; overrideAmount?: number | null }) => void
   onDelete: () => void
   fmt: (v: number) => string
   lang: string
@@ -459,8 +459,8 @@ interface TransactionRowProps {
 }
 
 function TransactionRow({ tx, recurringExpenses, variableExpenses, expanded, onToggle, onUpdate, onDelete, fmt, lang, categoryConfig }: TransactionRowProps) {
-  const matchedRecurring = recurringExpenses.find(e => e.id === tx.recurringExpenseId)
-  const matchedVariable = variableExpenses.find(e => e.id === tx.recurringExpenseId)
+  const matchedRecurring = tx.recurringExpenseId ? recurringExpenses.find(e => e.id === tx.recurringExpenseId) : undefined
+  const matchedVariable = tx.variableExpenseId ? variableExpenses.find(e => e.id === tx.variableExpenseId) : undefined
   const matchedExpense = matchedRecurring ?? matchedVariable
   const amountMismatch = tx.mappingStatus === 'auto' && matchedRecurring != null && Math.abs(tx.amount - matchedRecurring.amount) > 10
   const displayAmount = tx.overrideAmount ?? tx.amount
@@ -543,12 +543,13 @@ function TransactionRow({ tx, recurringExpenses, variableExpenses, expanded, onT
               <label className="text-xs text-slate-400 mb-1 block">{t('tx.map.expense', lang)}</label>
               <div className="relative">
                 <select
-                  value={recurringExpenses.find(e => e.id === tx.recurringExpenseId) ? tx.recurringExpenseId ?? '' : ''}
+                  value={tx.recurringExpenseId ?? ''}
                   onChange={e => {
                     const re = recurringExpenses.find(r => r.id === e.target.value)
                     onUpdate({
                       recurringExpenseId: e.target.value || null,
-                      mappingStatus: e.target.value ? 'manual' : (variableExpenses.find(v => v.id === tx.recurringExpenseId) ? 'manual' : 'unmapped'),
+                      variableExpenseId: e.target.value ? null : tx.variableExpenseId ?? null,
+                      mappingStatus: e.target.value ? 'manual' : (tx.variableExpenseId ? 'manual' : 'unmapped'),
                       expenseCategory: re ? re.category : null,
                     })
                   }}
@@ -572,12 +573,13 @@ function TransactionRow({ tx, recurringExpenses, variableExpenses, expanded, onT
               <label className="text-xs text-slate-400 mb-1 block">{t('tx.map.variable', lang)}</label>
               <div className="relative">
                 <select
-                  value={variableExpenses.find(e => e.id === tx.recurringExpenseId) ? tx.recurringExpenseId ?? '' : ''}
+                  value={tx.variableExpenseId ?? ''}
                   onChange={e => {
                     const ve = variableExpenses.find(v => v.id === e.target.value)
                     onUpdate({
-                      recurringExpenseId: e.target.value || null,
-                      mappingStatus: e.target.value ? 'manual' : (recurringExpenses.find(r => r.id === tx.recurringExpenseId) ? 'manual' : 'unmapped'),
+                      variableExpenseId: e.target.value || null,
+                      recurringExpenseId: e.target.value ? null : tx.recurringExpenseId ?? null,
+                      mappingStatus: e.target.value ? 'manual' : (tx.recurringExpenseId ? 'manual' : 'unmapped'),
                       expenseCategory: ve ? ve.category : null,
                     })
                   }}
@@ -603,7 +605,7 @@ function TransactionRow({ tx, recurringExpenses, variableExpenses, expanded, onT
               <div className="relative">
                 <select
                   value={tx.expenseCategory ?? ''}
-                  disabled={!!recurringExpenses.find(e => e.id === tx.recurringExpenseId) || !!variableExpenses.find(e => e.id === tx.recurringExpenseId)}
+                  disabled={!!tx.recurringExpenseId || !!tx.variableExpenseId}
                   onChange={e => onUpdate({ expenseCategory: e.target.value || null })}
                   className={`appearance-none w-full bg-[#09090f] border border-white/10 text-slate-300 text-xs rounded-lg py-2 disabled:opacity-40 disabled:cursor-not-allowed ${lang === 'he' ? 'pr-3 pl-7' : 'pl-3 pr-7'}`}
                 >
