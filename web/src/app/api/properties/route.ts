@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   const effectiveUserId = await getEffectiveUserId(session.user.id)
   const body = await request.json()
 
-  const { name, address, lat, lng, propertyType, estimatedValue, valuationDate, description, notes } = body
+  const { name, address, lat, lng, propertyType, estimatedValue, valuationDate, description, notes, aiEstimateReasoning } = body
 
   if (!name || estimatedValue == null || !valuationDate) {
     return new Response('Missing required fields', { status: 400 })
@@ -46,6 +46,7 @@ export async function POST(request: Request) {
       valuationDate,
       description: description || null,
       notes: notes || null,
+      aiEstimateReasoning: aiEstimateReasoning || null,
     }
   })
 

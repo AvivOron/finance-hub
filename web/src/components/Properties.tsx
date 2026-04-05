@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Plus, Pencil, Trash2, X, Building2, Home, Landmark, Store, MapPin, Loader2, Check } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Building2, Home, Landmark, Store, MapPin, Loader2, Check, Sparkles } from 'lucide-react'
 import { Property, PropertyType } from '../types'
 import { formatCurrency, formatCurrencyShort, cn } from '../utils'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { t } from '@/translations'
 import { Modal } from './Accounts'
+import { renderMarkdown } from './renderMarkdown'
 
 interface PropertiesProps {
   properties: Property[]
@@ -26,6 +27,7 @@ type FormState = {
   valuationDate: string
   description: string
   notes: string
+  aiEstimateReasoning: string
 }
 
 const PROPERTY_ICONS: Record<PropertyType, React.ElementType> = {
@@ -61,6 +63,7 @@ const emptyForm: FormState = {
   valuationDate: todayString(),
   description: '',
   notes: '',
+  aiEstimateReasoning: '',
 }
 
 // ─── Address autocomplete via OpenStreetMap Nominatim ────────────────────────
@@ -282,6 +285,8 @@ export function Properties({ properties, onAdd, onUpdate, onDelete }: Properties
   const [form, setForm] = useState<FormState>(emptyForm)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [estimating, setEstimating] = useState(false)
+  const [estimateExplanation, setEstimateExplanation] = useState<string | null>(null)
 
   const totalValue = properties.reduce((s, p) => s + p.estimatedValue, 0)
 
@@ -303,9 +308,11 @@ export function Properties({ properties, onAdd, onUpdate, onDelete }: Properties
       valuationDate: p.valuationDate,
       description: p.description ?? '',
       notes: p.notes ?? '',
+      aiEstimateReasoning: p.aiEstimateReasoning ?? '',
     })
     setEditingId(p.id)
     setError(null)
+    setEstimateExplanation(p.aiEstimateReasoning ?? null)
     setShowModal(true)
   }
 
@@ -313,6 +320,7 @@ export function Properties({ properties, onAdd, onUpdate, onDelete }: Properties
     setShowModal(false)
     setEditingId(null)
     setError(null)
+    setEstimateExplanation(null)
   }
 
   function set<K extends keyof FormState>(k: K, v: FormState[K]) {
@@ -334,6 +342,7 @@ export function Properties({ properties, onAdd, onUpdate, onDelete }: Properties
         valuationDate: form.valuationDate,
         description: form.description.trim() || undefined,
         notes: form.notes.trim() || undefined,
+        aiEstimateReasoning: form.aiEstimateReasoning || undefined,
       }
       if (editingId) {
         await onUpdate(editingId, payload as Omit<Property, 'id' | 'userId' | 'createdAt' | 'updatedAt'>)
@@ -345,6 +354,39 @@ export function Properties({ properties, onAdd, onUpdate, onDelete }: Properties
       setError(t('properties.error.save', lang) + (e?.message ?? String(e)))
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleEstimate() {
+    setEstimating(true)
+    setEstimateExplanation(null)
+    try {
+      const res = await fetch('/finance-hub/api/estimate-property', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          address: form.address || undefined,
+          propertyType: form.propertyType,
+          description: form.description || undefined,
+          notes: form.notes || undefined,
+          lat: form.lat ?? undefined,
+          lng: form.lng ?? undefined,
+          language: lang,
+        }),
+      })
+      const data = await res.json()
+      if (data.error) {
+        setEstimateExplanation('error')
+      } else {
+        set('estimatedValue', String(data.estimatedValue))
+        setEstimateExplanation(data.explanation)
+        set('aiEstimateReasoning', data.explanation ?? '')
+      }
+    } catch {
+      setEstimateExplanation('error')
+    } finally {
+      setEstimating(false)
     }
   }
 
@@ -467,34 +509,6 @@ export function Properties({ properties, onAdd, onUpdate, onDelete }: Properties
               </div>
             </div>
 
-            {/* Estimated Value + Valuation Date side by side */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                  {t('properties.modal.estimatedValueLabel', lang)}
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.estimatedValue}
-                  onChange={e => set('estimatedValue', e.target.value)}
-                  placeholder="e.g. 2500000"
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                  {t('properties.modal.valuationDateLabel', lang)}
-                </label>
-                <input
-                  type="date"
-                  value={form.valuationDate}
-                  onChange={e => set('valuationDate', e.target.value)}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-200 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30"
-                />
-              </div>
-            </div>
-
             {/* Address */}
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-1.5">
@@ -539,6 +553,58 @@ export function Properties({ properties, onAdd, onUpdate, onDelete }: Properties
                 className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 resize-none"
               />
             </div>
+
+            {/* Estimated Value + Valuation Date side by side */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                  {t('properties.modal.estimatedValueLabel', lang)}
+                </label>
+                <div className="flex gap-1.5">
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.estimatedValue}
+                    onChange={e => { set('estimatedValue', e.target.value); setEstimateExplanation(null) }}
+                    placeholder="e.g. 2500000"
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleEstimate}
+                    disabled={estimating || !form.name.trim()}
+                    title={t('properties.modal.estimateButton', lang)}
+                    className="shrink-0 flex items-center px-2 py-1.5 bg-violet-500/15 hover:bg-violet-500/25 disabled:opacity-40 disabled:cursor-not-allowed text-violet-300 border border-violet-500/30 rounded-lg transition-colors"
+                  >
+                    {estimating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                  {t('properties.modal.valuationDateLabel', lang)}
+                </label>
+                <input
+                  type="date"
+                  value={form.valuationDate}
+                  onChange={e => set('valuationDate', e.target.value)}
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-200 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30"
+                />
+              </div>
+            </div>
+
+            {/* AI estimate explanation */}
+            {estimateExplanation && estimateExplanation !== 'error' && (
+              <div className="flex items-start gap-2 px-3 py-2 bg-violet-500/10 border border-violet-500/20 rounded-lg">
+                <Sparkles size={12} className="shrink-0 mt-0.5 text-violet-400" />
+                <div className="text-xs text-violet-300 leading-snug">{renderMarkdown(estimateExplanation, lang)}</div>
+              </div>
+            )}
+            {estimateExplanation === 'error' && (
+              <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                {t('properties.modal.estimateError', lang)}
+              </p>
+            )}
 
             {error && (
               <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">

@@ -19,7 +19,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     return new Response('Not found', { status: 404 })
   }
 
-  const { name, address, lat, lng, propertyType, estimatedValue, valuationDate, description, notes } = body
+  const { name, address, lat, lng, propertyType, estimatedValue, valuationDate, description, notes, aiEstimateReasoning } = body
 
   const property = await prisma.property.update({
     where: { id },
@@ -33,6 +33,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       valuationDate,
       description: description || null,
       notes: notes || null,
+      aiEstimateReasoning: aiEstimateReasoning ?? existing.aiEstimateReasoning,
     }
   })
 

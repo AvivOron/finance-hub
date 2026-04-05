@@ -136,6 +136,7 @@ export interface Property {
   valuationDate: string // YYYY-MM-DD
   description?: string
   notes?: string
+  aiEstimateReasoning?: string
   createdAt: string
   updatedAt: string
 }
