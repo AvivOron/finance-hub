@@ -18,10 +18,19 @@ interface MappingResult {
   mappingStatus: 'auto' | 'unmapped'
 }
 
+interface MerchantHistory {
+  merchant: string
+  expenseId: string
+  expenseName: string
+  expenseType: 'recurring' | 'variable'
+  count: number
+}
+
 async function mapWithClaude(
   transactions: Transaction[],
   recurringExpenses: RecurringExpense[],
-  variableExpenses: VariableExpense[]
+  variableExpenses: VariableExpense[],
+  merchantHistory: MerchantHistory[]
 ): Promise<MappingResult[]> {
   const recurringList = recurringExpenses
     .filter(e => e.active)
@@ -39,6 +48,13 @@ async function mapWithClaude(
     .map(t => `- id: ${t.id} | merchant: "${t.merchant}" | amount: ₪${t.amount} | calCategory: "${t.calCategory ?? ''}" | type: "${t.type}"`)
     .join('\n')
 
+  const historySection = merchantHistory.length > 0
+    ? `## Past Merchant→Expense Links (from last 3 months, use as strong hints):\n` +
+      merchantHistory
+        .map(h => `- merchant: "${h.merchant}" → expense id: ${h.expenseId} | name: "${h.expenseName}" | type: ${h.expenseType} (linked ${h.count}x)`)
+        .join('\n')
+    : ''
+
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 4096,
@@ -47,16 +63,18 @@ async function mapWithClaude(
         role: 'user',
         content: `You are a financial assistant helping categorize Israeli credit card transactions.
 
-## Recurring Expenses (the user's logged recurring bills):
+## Expenses (the user's logged bills):
 ${expenseList || '(none)'}
+
+${historySection}
 
 ## Transactions to map:
 ${txList}
 
 For each transaction, determine:
-1. If it matches a recurring expense (by merchant name / purpose — not necessarily same amount), provide its id in recurringExpenseId
+1. If it matches an expense (by merchant name / purpose — not necessarily same amount), provide its id in recurringExpenseId. Prioritize past merchant→expense links above as strong signals — if a merchant was previously linked to an expense, use that same mapping unless another expense is clearly a better fit.
 2. The best expenseCategory from: housing, childcare, subscriptions, insurance, utilities, transport, pets, groceries, lifestyle, other
-3. mappingStatus: "auto" if you matched to a recurring expense, "unmapped" otherwise
+3. mappingStatus: "auto" if you matched to an expense, "unmapped" otherwise
 
 Use context clues: הוראת קבע = standing order (likely recurring), merchant names in Hebrew, Cal category (ענף).
 
@@ -94,8 +112,56 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No transactions provided' }, { status: 400 })
     }
 
+    // Fetch last 3 months of manually/auto-mapped transactions to build merchant history
+    const threeMonthsAgo = new Date()
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+
+    const recentMapped = await prisma.transaction.findMany({
+      where: {
+        userId: effectiveUserId,
+        mappingStatus: { in: ['auto', 'manual'] },
+        date: { gte: threeMonthsAgo.toISOString().slice(0, 10) },
+        OR: [
+          { recurringExpenseId: { not: null } },
+          { variableExpenseId: { not: null } },
+        ],
+      },
+      select: {
+        merchant: true,
+        recurringExpenseId: true,
+        variableExpenseId: true,
+      },
+    })
+
+    // Build merchant → expense frequency map
+    const allExpenses = [
+      ...(recurringExpenses ?? []).map(e => ({ id: e.id, name: e.name, type: 'recurring' as const })),
+      ...(variableExpenses ?? []).map(e => ({ id: e.id, name: e.name, type: 'variable' as const })),
+    ]
+    const expenseById = new Map(allExpenses.map(e => [e.id, e]))
+
+    const historyMap = new Map<string, { expenseId: string; expenseName: string; expenseType: 'recurring' | 'variable'; count: number }>()
+    for (const tx of recentMapped) {
+      const expenseId = tx.recurringExpenseId ?? tx.variableExpenseId
+      if (!expenseId) continue
+      const expense = expenseById.get(expenseId)
+      if (!expense) continue
+      const key = `${tx.merchant}|${expenseId}`
+      const existing = historyMap.get(key)
+      if (existing) {
+        existing.count++
+      } else {
+        historyMap.set(key, { expenseId, expenseName: expense.name, expenseType: expense.type, count: 1 })
+      }
+    }
+
+    const merchantHistory: MerchantHistory[] = Array.from(historyMap.entries()).map(([key, val]) => ({
+      merchant: key.split('|')[0],
+      ...val,
+    }))
+
     // Map using Claude
-    const mappings = await mapWithClaude(transactions, recurringExpenses ?? [], variableExpenses ?? [])
+    const mappings = await mapWithClaude(transactions, recurringExpenses ?? [], variableExpenses ?? [], merchantHistory)
 
     const variableExpenseIdSet = new Set((variableExpenses ?? []).map(e => e.id))
 
