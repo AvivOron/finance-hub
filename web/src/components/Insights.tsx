@@ -143,7 +143,7 @@ export function Insights({ data, user, onSaveInsights }: InsightsProps) {
 
   return (
     <div className="absolute inset-0 flex flex-col px-4 py-6 md:px-8 md:py-8">
-      <div className="max-w-5xl w-full mx-auto flex flex-col flex-1 min-h-0 gap-6">
+      <div className="w-full flex flex-col flex-1 min-h-0 gap-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>

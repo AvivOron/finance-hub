@@ -178,7 +178,7 @@ export function FireCalculator({ data, txSummary }: FireCalculatorProps) {
   const currSymbol = currency === 'NIS' ? '₪' : '$'
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="w-full p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl bg-orange-500/15 flex items-center justify-center shrink-0">

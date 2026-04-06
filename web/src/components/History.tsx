@@ -59,6 +59,45 @@ export function History({ data, onSave, onEditSnapshot }: HistoryProps) {
     return { snapshot, stats, momChange }
   })
 
+  function renderRowActions(snapshotId: string) {
+    if (deleteConfirm === snapshotId) {
+      return (
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-gray-500 mr-1">{t('history.deleteConfirm', lang)}</span>
+          <button
+            onClick={() => handleDelete(snapshotId)}
+            className="p-1.5 rounded-md bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
+          >
+            <Check size={13} />
+          </button>
+          <button
+            onClick={() => setDeleteConfirm(null)}
+            className="p-1.5 rounded-md bg-white/5 hover:bg-white/10 text-gray-400 transition-colors"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <>
+        <button
+          onClick={() => onEditSnapshot(snapshotId)}
+          className="p-1.5 rounded-md hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors"
+        >
+          <Pencil size={13} />
+        </button>
+        <button
+          onClick={() => setDeleteConfirm(snapshotId)}
+          className="p-1.5 rounded-md hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-colors"
+        >
+          <Trash2 size={13} />
+        </button>
+      </>
+    )
+  }
+
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
       <div className="mb-8">
@@ -68,7 +107,51 @@ export function History({ data, onSave, onEditSnapshot }: HistoryProps) {
         </p>
       </div>
 
-      <div className="bg-[#14141f] border border-white/5 rounded-xl overflow-x-auto">
+      <div className="space-y-3 md:hidden">
+        {statsWithChange.map(({ snapshot, stats, momChange }) => (
+          <div key={snapshot.id} className="bg-[#14141f] border border-white/5 rounded-xl p-4 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-medium text-gray-200">{formatMonthFull(snapshot.date, lang)}</p>
+                <p className="text-xs text-gray-500 mt-1">{t('history.table.netWorth', lang)}</p>
+                <p className={stats.netWorth >= 0 ? 'text-white font-bold mt-0.5' : 'text-red-400 font-bold mt-0.5'}>
+                  {fmt(stats.netWorth)}
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                {renderRowActions(snapshot.id)}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg bg-white/[0.03] px-3 py-2.5">
+                <p className="text-xs text-gray-500">{t('history.table.assets', lang)}</p>
+                <p className="mt-1 font-medium text-emerald-400">{fmt(stats.assets)}</p>
+              </div>
+              <div className="rounded-lg bg-white/[0.03] px-3 py-2.5">
+                <p className="text-xs text-gray-500">{t('history.table.liabilities', lang)}</p>
+                <p className="mt-1 font-medium text-red-400">{fmt(stats.liabilities)}</p>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-white/[0.03] px-3 py-2.5">
+              <p className="text-xs text-gray-500">{t('history.table.momChange', lang)}</p>
+              <p className="mt-1 text-sm">
+                {momChange !== null ? (
+                  <span className={momChange >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                    {momChange >= 0 ? '+' : ''}
+                    {fmtShort(momChange)}
+                  </span>
+                ) : (
+                  <span className="text-gray-600">—</span>
+                )}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden md:block bg-[#14141f] border border-white/5 rounded-xl overflow-x-auto">
         <table className="w-full text-sm min-w-[560px]">
           <thead>
             <tr className="border-b border-white/5">
@@ -94,7 +177,7 @@ export function History({ data, onSave, onEditSnapshot }: HistoryProps) {
             {statsWithChange.map(({ snapshot, stats, momChange }) => (
               <tr key={snapshot.id} className="group hover:bg-white/[0.02] transition-colors">
                 <td className="px-5 py-4">
-                  <span className="font-medium text-gray-200">{formatMonthFull(snapshot.date)}</span>
+                  <span className="font-medium text-gray-200">{formatMonthFull(snapshot.date, lang)}</span>
                 </td>
                 <td className="px-5 py-4 text-right text-emerald-400 font-medium">
                   {fmt(stats.assets)}
@@ -121,38 +204,7 @@ export function History({ data, onSave, onEditSnapshot }: HistoryProps) {
                 </td>
                 <td className="px-5 py-4">
                   <div className="flex items-center justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                    {deleteConfirm === snapshot.id ? (
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-gray-500 mr-1">{t('history.deleteConfirm', lang)}</span>
-                        <button
-                          onClick={() => handleDelete(snapshot.id)}
-                          className="p-1.5 rounded-md bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
-                        >
-                          <Check size={13} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(null)}
-                          className="p-1.5 rounded-md bg-white/5 hover:bg-white/10 text-gray-400 transition-colors"
-                        >
-                          <X size={13} />
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => onEditSnapshot(snapshot.id)}
-                          className="p-1.5 rounded-md hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors"
-                        >
-                          <Pencil size={13} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(snapshot.id)}
-                          className="p-1.5 rounded-md hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-colors"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </>
-                    )}
+                    {renderRowActions(snapshot.id)}
                   </div>
                 </td>
               </tr>

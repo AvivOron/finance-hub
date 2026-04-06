@@ -160,6 +160,61 @@ export function Investments({ data, onSave }: InvestmentsProps) {
     }
   }
 
+  function renderFeeEditor(accountId: string, inv: Investment) {
+    if (savingFeeCell?.accountId === accountId && savingFeeCell?.paperNumber === inv.paperNumber) {
+      return (
+        <div className="flex gap-2 items-center justify-end">
+          <div className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+        </div>
+      )
+    }
+
+    if (editingFeeCell?.accountId === accountId && editingFeeCell?.paperNumber === inv.paperNumber) {
+      return (
+        <div className="flex gap-2 items-center justify-end">
+          <input
+            type="number"
+            step="0.01"
+            value={feeInputValue}
+            onChange={(e) => setFeeInputValue(e.target.value)}
+            className="w-16 px-2 py-1 bg-slate-700 border border-indigo-500 rounded text-sm text-white"
+            autoFocus
+            onBlur={() => {
+              const fee = feeInputValue === '' ? null : parseFloat(feeInputValue)
+              handleSaveFee(accountId, inv.paperNumber, fee)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const fee = feeInputValue === '' ? null : parseFloat(feeInputValue)
+                handleSaveFee(accountId, inv.paperNumber, fee)
+              } else if (e.key === 'Escape') {
+                setEditingFeeCell(null)
+                setFeeInputValue('')
+              }
+            }}
+          />
+          <span className="text-slate-400 text-xs">%</span>
+        </div>
+      )
+    }
+
+    return (
+      <button
+        onClick={() => {
+          setEditingFeeCell({ accountId, paperNumber: inv.paperNumber })
+          setFeeInputValue((inv.managementFee ?? '').toString())
+        }}
+        className="rounded px-2 py-1 transition hover:bg-slate-700/50"
+      >
+        {inv.managementFee !== undefined ? (
+          <div className="font-mono">{inv.managementFee}%</div>
+        ) : (
+          <span className="text-slate-500 text-xs">—</span>
+        )}
+      </button>
+    )
+  }
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold text-white mb-6">{t('nav.investments', lang)}</h1>
@@ -289,8 +344,67 @@ export function Investments({ data, onSave }: InvestmentsProps) {
 
                   {/* Holdings table */}
                   {holding && holding.holdings.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm text-slate-300">
+                    <>
+                      <div className="space-y-3 md:hidden">
+                        {holding.holdings
+                          .map((inv) => ({
+                            inv,
+                            pctOfAccount: holding.totalValueNIS > 0 ? (inv.valueNIS / holding.totalValueNIS) * 100 : 0
+                          }))
+                          .sort((a, b) => b.pctOfAccount - a.pctOfAccount)
+                          .map(({ inv, pctOfAccount }) => (
+                            <div key={inv.paperNumber} className="rounded-xl border border-slate-700 bg-slate-900/40 p-4 space-y-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="font-medium text-slate-100">{inv.name}</p>
+                                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                                    <span className="font-mono">{inv.paperNumber}</span>
+                                    {inv.category && <span>{inv.category}</span>}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-semibold text-slate-100">{fmt(inv.valueNIS)}</p>
+                                  <p className="text-xs text-slate-400">{pctOfAccount.toFixed(1)}%</p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div className="rounded-lg bg-slate-800/70 px-3 py-2.5">
+                                  <p className="text-xs text-slate-500">{t('holdings.qty', lang)}</p>
+                                  <p className="mt-1 font-mono text-slate-200">{inv.quantity.toLocaleString()}</p>
+                                </div>
+                                <div className="rounded-lg bg-slate-800/70 px-3 py-2.5">
+                                  <p className="text-xs text-slate-500">{t('holdings.price', lang)}</p>
+                                  <p className="mt-1 font-mono text-slate-200">₪{inv.lastPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}</p>
+                                </div>
+                                <div className="rounded-lg bg-slate-800/70 px-3 py-2.5">
+                                  <p className="text-xs text-slate-500">{t('holdings.gain', lang)}</p>
+                                  <div className="mt-1">
+                                    <p className="font-mono font-semibold">
+                                      {inv.gainFromCostPct > 0 ? (
+                                        <span className="text-emerald-400">+{inv.gainFromCostPct.toFixed(2)}%</span>
+                                      ) : inv.gainFromCostPct < 0 ? (
+                                        <span className="text-red-400">{inv.gainFromCostPct.toFixed(2)}%</span>
+                                      ) : (
+                                        <span className="text-slate-400">0%</span>
+                                      )}
+                                    </p>
+                                    <p className="text-xs text-slate-500">{fmt(inv.gainFromCostNIS)}</p>
+                                  </div>
+                                </div>
+                                <div className="rounded-lg bg-slate-800/70 px-3 py-2.5">
+                                  <p className="text-xs text-slate-500">{t('holdings.fee', lang)}</p>
+                                  <div className="mt-1 flex justify-end">
+                                    {renderFeeEditor(account.id, inv)}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full text-sm text-slate-300">
                         <thead>
                           <tr className="border-b border-slate-700">
                             <th className="px-3 py-2 text-left font-semibold text-slate-200">
@@ -367,50 +481,9 @@ export function Investments({ data, onSave }: InvestmentsProps) {
                                 </div>
                               </td>
                               <td className="px-3 py-2 text-right">
-                                {savingFeeCell?.accountId === account.id && savingFeeCell?.paperNumber === inv.paperNumber ? (
-                                  <div className="flex gap-2 items-center justify-end">
-                                    <div className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-                                  </div>
-                                ) : editingFeeCell?.accountId === account.id && editingFeeCell?.paperNumber === inv.paperNumber ? (
-                                  <div className="flex gap-2 items-center justify-end">
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      value={feeInputValue}
-                                      onChange={(e) => setFeeInputValue(e.target.value)}
-                                      className="w-16 px-2 py-1 bg-slate-700 border border-indigo-500 rounded text-sm text-white"
-                                      autoFocus
-                                      onBlur={() => {
-                                        const fee = feeInputValue === '' ? null : parseFloat(feeInputValue)
-                                        handleSaveFee(account.id, inv.paperNumber, fee)
-                                      }}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                          const fee = feeInputValue === '' ? null : parseFloat(feeInputValue)
-                                          handleSaveFee(account.id, inv.paperNumber, fee)
-                                        } else if (e.key === 'Escape') {
-                                          setEditingFeeCell(null)
-                                          setFeeInputValue('')
-                                        }
-                                      }}
-                                    />
-                                    <span className="text-slate-400 text-xs">%</span>
-                                  </div>
-                                ) : (
-                                  <button
-                                    onClick={() => {
-                                      setEditingFeeCell({ accountId: account.id, paperNumber: inv.paperNumber })
-                                      setFeeInputValue((inv.managementFee ?? '').toString())
-                                    }}
-                                    className="w-full text-right hover:bg-slate-700/50 rounded px-2 py-1 transition"
-                                  >
-                                    {inv.managementFee !== undefined ? (
-                                      <div className="font-mono">{inv.managementFee}%</div>
-                                    ) : (
-                                      <span className="text-slate-500 text-xs">—</span>
-                                    )}
-                                  </button>
-                                )}
+                                <div className="flex justify-end">
+                                  {renderFeeEditor(account.id, inv)}
+                                </div>
                               </td>
                               <td className="px-3 py-2 text-right text-slate-400 text-xs">
                                 {pctOfAccount.toFixed(1)}%
@@ -419,8 +492,9 @@ export function Investments({ data, onSave }: InvestmentsProps) {
                               ))
                           })()}
                         </tbody>
-                      </table>
-                    </div>
+                        </table>
+                      </div>
+                    </>
                   ) : (
                     <div className="text-center py-8 text-slate-400">
                       {t('holdings.empty_account', lang)}

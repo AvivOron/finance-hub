@@ -288,7 +288,7 @@ export function SnapshotEntry({
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="mx-auto w-full max-w-6xl space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">
             {editingSnapshotId ? t('snapshot.title.edit', lang) : t('snapshot.title.new', lang)}
