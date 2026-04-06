@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { TouchEvent, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/Sidebar'
 import { Dashboard } from '@/components/Dashboard'
@@ -21,6 +21,7 @@ import { TourOverlay } from '@/components/TourOverlay'
 import { useData } from '@/hooks/useData'
 import { useProperties } from '@/hooks/useProperties'
 import { useLanguage } from '@/context/LanguageContext'
+import { t } from '@/translations'
 import { Page } from '@/types'
 
 interface AppClientProps {
@@ -36,6 +37,27 @@ interface AppClientProps {
 
 const ONBOARDING_KEY = 'finance-hub:onboarding-done'
 const TOUR_KEY = 'finance-hub:tour-done'
+const EDGE_SWIPE_ZONE_PX = 24
+const SWIPE_OPEN_THRESHOLD_PX = 56
+const SWIPE_CLOSE_THRESHOLD_PX = 48
+const SWIPE_VERTICAL_TOLERANCE_PX = 24
+const MOBILE_BREAKPOINT_PX = 768
+const pageTitleKeyMap: Record<Page, string> = {
+  dashboard: 'nav.dashboard',
+  accounts: 'nav.accounts',
+  snapshot: 'nav.snapshot',
+  history: 'nav.history',
+  expenses: 'nav.expenses',
+  'variable-expenses': 'nav.expenses',
+  income: 'nav.income',
+  insights: 'nav.insights',
+  projections: 'nav.projections',
+  investments: 'nav.investments',
+  transactions: 'nav.transactions',
+  properties: 'nav.properties',
+  fire: 'nav.fire',
+  settings: 'nav.settings',
+}
 
 export function AppClient({ user, page }: AppClientProps) {
   const router = useRouter()
@@ -57,6 +79,17 @@ export function AppClient({ user, page }: AppClientProps) {
   const { properties, addProperty, updateProperty, deleteProperty } = useProperties()
   const [editingSnapshotId, setEditingSnapshotId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const swipeRef = useRef<{
+    tracking: boolean
+    startX: number
+    startY: number
+    edgeEligible: boolean
+  }>({
+    tracking: false,
+    startX: 0,
+    startY: 0,
+    edgeEligible: false,
+  })
 
   // Onboarding: show for real users until they have accounts OR permanently dismiss
   const [showOnboarding, setShowOnboarding] = useState(() => {
@@ -121,6 +154,60 @@ export function AppClient({ user, page }: AppClientProps) {
     }
   }, [editingSnapshotId, page])
 
+  function isMobileViewport() {
+    return typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT_PX
+  }
+
+  function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
+    if (!isMobileViewport()) return
+
+    const touch = event.touches[0]
+    const viewportWidth = window.innerWidth
+    const startX = touch.clientX
+    const startY = touch.clientY
+    const edgeEligible = sidebarOpen
+      ? true
+      : lang === 'he'
+        ? startX >= viewportWidth - EDGE_SWIPE_ZONE_PX
+        : startX <= EDGE_SWIPE_ZONE_PX
+
+    swipeRef.current = {
+      tracking: true,
+      startX,
+      startY,
+      edgeEligible,
+    }
+  }
+
+  function handleTouchEnd(event: TouchEvent<HTMLDivElement>) {
+    const swipe = swipeRef.current
+    swipeRef.current = {
+      tracking: false,
+      startX: 0,
+      startY: 0,
+      edgeEligible: false,
+    }
+
+    if (!swipe.tracking || !swipe.edgeEligible || !isMobileViewport()) return
+
+    const touch = event.changedTouches[0]
+    const deltaX = touch.clientX - swipe.startX
+    const deltaY = touch.clientY - swipe.startY
+
+    if (Math.abs(deltaY) > SWIPE_VERTICAL_TOLERANCE_PX || Math.abs(deltaY) > Math.abs(deltaX)) {
+      return
+    }
+
+    const openGesture = lang === 'he' ? deltaX <= -SWIPE_OPEN_THRESHOLD_PX : deltaX >= SWIPE_OPEN_THRESHOLD_PX
+    const closeGesture = lang === 'he' ? deltaX >= SWIPE_CLOSE_THRESHOLD_PX : deltaX <= -SWIPE_CLOSE_THRESHOLD_PX
+
+    if (!sidebarOpen && openGesture) {
+      setSidebarOpen(true)
+    } else if (sidebarOpen && closeGesture) {
+      setSidebarOpen(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#09090f]">
@@ -133,7 +220,12 @@ export function AppClient({ user, page }: AppClientProps) {
   }
 
   return (
-    <div className="flex h-screen bg-[#09090f] overflow-hidden" dir={lang === 'he' ? 'rtl' : 'ltr'}>
+    <div
+      className="flex min-h-[100dvh] bg-[#09090f] overflow-hidden md:h-screen"
+      dir={lang === 'he' ? 'rtl' : 'ltr'}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {showOnboarding && data.accounts.length === 0 && (
         <OnboardingModal
           onComplete={handleOnboardingComplete}
@@ -159,21 +251,25 @@ export function AppClient({ user, page }: AppClientProps) {
 
       <Sidebar page={page} onNavigate={handleNavigate} user={user} open={sidebarOpen} isDemo={user.isDemo} onRestartTour={user.isDemo ? handleRestartTour : undefined} />
 
-      <main className="flex flex-1 overflow-hidden flex-col min-w-0">
+      <main className="relative flex flex-1 overflow-hidden flex-col min-w-0">
         {/* Mobile header */}
-        <div className="md:hidden flex items-center gap-3 px-4 h-14 border-b border-white/5 bg-[#0f0f18] shrink-0">
+        <div className="md:hidden fixed inset-x-0 top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-end gap-3 border-b border-white/10 bg-[#0f0f18]/95 px-4 pb-3 pt-[env(safe-area-inset-top)] backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-1.5 rounded-md text-gray-400 hover:text-gray-200 hover:bg-white/10 transition-colors"
+            aria-label="Open menu"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M2 4.5h14M2 9h14M2 13.5h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
           </button>
-          <span className="text-sm font-semibold text-white/90">Finance Hub</span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-indigo-300/80">Finance Hub</p>
+            <p className="truncate text-sm font-semibold text-white">{t(pageTitleKeyMap[page], lang)}</p>
+          </div>
         </div>
 
-        <div className={`flex-1 ${page === 'insights' ? 'overflow-hidden relative' : 'overflow-y-auto'}`}>
+        <div className={`flex-1 pt-[calc(3.5rem+env(safe-area-inset-top))] md:pt-0 ${page === 'insights' ? 'overflow-hidden relative' : 'overflow-y-auto'}`}>
           {page === 'dashboard' && (
             <Dashboard data={data} onNavigate={handleNavigate} txSummary={txSummary} properties={properties} />
           )}
