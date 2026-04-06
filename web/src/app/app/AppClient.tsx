@@ -1,7 +1,7 @@
 'use client'
 
 import { TouchEvent, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/Sidebar'
 import { Dashboard } from '@/components/Dashboard'
 import { Accounts } from '@/components/Accounts'
@@ -21,6 +21,7 @@ import { TourOverlay } from '@/components/TourOverlay'
 import { useData } from '@/hooks/useData'
 import { useProperties } from '@/hooks/useProperties'
 import { useLanguage } from '@/context/LanguageContext'
+import { DEFAULT_APP_PAGE, isRoutableAppPage } from '@/lib/app-routes'
 import { t } from '@/translations'
 import { Page } from '@/types'
 
@@ -32,7 +33,6 @@ interface AppClientProps {
     image?: string | null
     isDemo?: boolean
   }
-  page: Page
 }
 
 const ONBOARDING_KEY = 'finance-hub:onboarding-done'
@@ -59,8 +59,25 @@ const pageTitleKeyMap: Record<Page, string> = {
   settings: 'nav.settings',
 }
 
-export function AppClient({ user, page }: AppClientProps) {
+function getPageFromPathname(pathname: string): Page {
+  const appPrefixes = ['/finance-hub/app', '/app']
+  const matchedPrefix = appPrefixes.find(prefix => pathname.startsWith(prefix))
+  const normalizedPath = matchedPrefix
+    ? pathname.slice(matchedPrefix.length) || '/'
+    : pathname
+  const segments = normalizedPath.split('/').filter(Boolean)
+  const currentPage = segments[0]
+
+  if (currentPage && isRoutableAppPage(currentPage)) {
+    return currentPage
+  }
+
+  return DEFAULT_APP_PAGE
+}
+
+export function AppClient({ user }: AppClientProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const {
     data,
     loading,
@@ -77,6 +94,7 @@ export function AppClient({ user, page }: AppClientProps) {
   } = useData()
   const { lang } = useLanguage()
   const { properties, addProperty, updateProperty, deleteProperty } = useProperties()
+  const page = getPageFromPathname(pathname)
   const [editingSnapshotId, setEditingSnapshotId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const swipeRef = useRef<{

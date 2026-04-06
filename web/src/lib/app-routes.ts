@@ -21,3 +21,15 @@ export const ROUTABLE_APP_PAGES: readonly Page[] = [
 export function isRoutableAppPage(value: string): value is Page {
   return ROUTABLE_APP_PAGES.includes(value as Page)
 }
+
+export function getPageFromSegments(pageSegments?: string[]): Page | null {
+  if (!pageSegments || pageSegments.length === 0) {
+    return DEFAULT_APP_PAGE
+  }
+
+  if (pageSegments.length !== 1 || !isRoutableAppPage(pageSegments[0])) {
+    return null
+  }
+
+  return pageSegments[0]
+}
