@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/Sidebar'
 import { Dashboard } from '@/components/Dashboard'
 import { Accounts } from '@/components/Accounts'
@@ -30,12 +31,14 @@ interface AppClientProps {
     image?: string | null
     isDemo?: boolean
   }
+  page: Page
 }
 
 const ONBOARDING_KEY = 'finance-hub:onboarding-done'
 const TOUR_KEY = 'finance-hub:tour-done'
 
-export function AppClient({ user }: AppClientProps) {
+export function AppClient({ user, page }: AppClientProps) {
+  const router = useRouter()
   const {
     data,
     loading,
@@ -52,8 +55,6 @@ export function AppClient({ user }: AppClientProps) {
   } = useData()
   const { lang } = useLanguage()
   const { properties, addProperty, updateProperty, deleteProperty } = useProperties()
-
-  const [page, setPage] = useState<Page>('dashboard')
   const [editingSnapshotId, setEditingSnapshotId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -97,19 +98,28 @@ export function AppClient({ user }: AppClientProps) {
 
   function handleEditSnapshot(id: string) {
     setEditingSnapshotId(id)
-    setPage('snapshot')
+    navigateToPage('snapshot')
   }
 
   function handleSnapshotEditDone() {
     setEditingSnapshotId(null)
-    setPage('history')
+    navigateToPage('history')
   }
 
-  function handleNavigate(p: Page) {
-    if (p !== 'snapshot') setEditingSnapshotId(null)
-    setPage(p)
+  function navigateToPage(nextPage: Page) {
+    router.push(`/app/${nextPage}`)
+  }
+
+  function handleNavigate(nextPage: Page) {
+    navigateToPage(nextPage)
     setSidebarOpen(false)
   }
+
+  useEffect(() => {
+    if (page !== 'snapshot' && editingSnapshotId) {
+      setEditingSnapshotId(null)
+    }
+  }, [editingSnapshotId, page])
 
   if (loading) {
     return (
