@@ -27,6 +27,7 @@ import { t } from '../translations'
 
 interface SidebarProps {
   page: Page
+  isNavigating?: boolean
   onNavigate: (page: Page) => void
   open?: boolean
   isDemo?: boolean
@@ -93,7 +94,7 @@ const settingItems: { id: SettingPage; icon: React.ElementType }[] = [
   { id: 'settings', icon: SettingsIcon }
 ]
 
-export function Sidebar({ page, onNavigate, open, isDemo, onRestartTour, user }: SidebarProps) {
+export function Sidebar({ page, isNavigating, onNavigate, open, isDemo, onRestartTour, user }: SidebarProps) {
   const { currency, setCurrency } = useCurrency()
   const { lang, setLang } = useLanguage()
   const [signingOut, setSigningOut] = useState(false)
@@ -165,7 +166,11 @@ export function Sidebar({ page, onNavigate, open, isDemo, onRestartTour, user }:
                     : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
                 )}
               >
-                <Icon size={16} className={page === id ? 'text-indigo-400' : 'text-gray-500'} />
+                {page === id && isNavigating ? (
+                  <Loader2 size={16} className="text-indigo-400 animate-spin" />
+                ) : (
+                  <Icon size={16} className={page === id ? 'text-indigo-400' : 'text-gray-500'} />
+                )}
                 {t(trackingLabelMap[id], lang)}
               </button>
             ))}
@@ -190,7 +195,11 @@ export function Sidebar({ page, onNavigate, open, isDemo, onRestartTour, user }:
                     : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
                 )}
               >
-                <Icon size={16} className={page === id ? 'text-indigo-400' : 'text-gray-500'} />
+                {page === id && isNavigating ? (
+                  <Loader2 size={16} className="text-indigo-400 animate-spin" />
+                ) : (
+                  <Icon size={16} className={page === id ? 'text-indigo-400' : 'text-gray-500'} />
+                )}
                 {t(expenseLabelMap[id], lang)}
               </button>
             ))}
@@ -215,7 +224,11 @@ export function Sidebar({ page, onNavigate, open, isDemo, onRestartTour, user }:
                     : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
                 )}
               >
-                <Icon size={16} className={page === id ? 'text-indigo-400' : 'text-gray-500'} />
+                {page === id && isNavigating ? (
+                  <Loader2 size={16} className="text-indigo-400 animate-spin" />
+                ) : (
+                  <Icon size={16} className={page === id ? 'text-indigo-400' : 'text-gray-500'} />
+                )}
                 {t(toolLabelMap[id], lang)}
               </button>
             ))}
@@ -236,7 +249,11 @@ export function Sidebar({ page, onNavigate, open, isDemo, onRestartTour, user }:
                     : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
                 )}
               >
-                <Icon size={16} className={page === id ? 'text-indigo-400' : 'text-gray-500'} />
+                {page === id && isNavigating ? (
+                  <Loader2 size={16} className="text-indigo-400 animate-spin" />
+                ) : (
+                  <Icon size={16} className={page === id ? 'text-indigo-400' : 'text-gray-500'} />
+                )}
                 {t(settingLabelMap[id], lang)}
               </button>
             ))}

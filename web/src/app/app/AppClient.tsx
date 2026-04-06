@@ -1,6 +1,6 @@
 'use client'
 
-import { TouchEvent, useEffect, useRef, useState } from 'react'
+import { TouchEvent, useEffect, useRef, useState, useTransition } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/Sidebar'
 import { Dashboard } from '@/components/Dashboard'
@@ -78,6 +78,7 @@ function getPageFromPathname(pathname: string): Page {
 export function AppClient({ user }: AppClientProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const [isNavigating, startTransition] = useTransition()
   const {
     data,
     loading,
@@ -95,6 +96,8 @@ export function AppClient({ user }: AppClientProps) {
   const { lang } = useLanguage()
   const { properties, addProperty, updateProperty, deleteProperty } = useProperties()
   const page = getPageFromPathname(pathname)
+  const [pendingPage, setPendingPage] = useState<Page | null>(null)
+  const activePage = pendingPage ?? page
   const [editingSnapshotId, setEditingSnapshotId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const swipeRef = useRef<{
@@ -158,10 +161,19 @@ export function AppClient({ user }: AppClientProps) {
   }
 
   function navigateToPage(nextPage: Page) {
-    router.push(`/app/${nextPage}`)
+    setPendingPage(nextPage)
+    startTransition(() => {
+      router.push(`/app/${nextPage}`)
+    })
   }
 
   function handleNavigate(nextPage: Page) {
+    if (nextPage === page) {
+      setPendingPage(null)
+      setSidebarOpen(false)
+      return
+    }
+
     navigateToPage(nextPage)
     setSidebarOpen(false)
   }
@@ -171,6 +183,10 @@ export function AppClient({ user }: AppClientProps) {
       setEditingSnapshotId(null)
     }
   }, [editingSnapshotId, page])
+
+  useEffect(() => {
+    setPendingPage(null)
+  }, [pathname])
 
   function isMobileViewport() {
     return typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT_PX
@@ -267,7 +283,15 @@ export function AppClient({ user }: AppClientProps) {
         />
       )}
 
-      <Sidebar page={page} onNavigate={handleNavigate} user={user} open={sidebarOpen} isDemo={user.isDemo} onRestartTour={user.isDemo ? handleRestartTour : undefined} />
+      <Sidebar
+        page={activePage}
+        isNavigating={isNavigating}
+        onNavigate={handleNavigate}
+        user={user}
+        open={sidebarOpen}
+        isDemo={user.isDemo}
+        onRestartTour={user.isDemo ? handleRestartTour : undefined}
+      />
 
       <main className="relative flex flex-1 overflow-hidden flex-col min-w-0">
         {/* Mobile header */}
@@ -283,11 +307,19 @@ export function AppClient({ user }: AppClientProps) {
           </button>
           <div className="min-w-0">
             <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-indigo-300/80">Finance Hub</p>
-            <p className="truncate text-sm font-semibold text-white">{t(pageTitleKeyMap[page], lang)}</p>
+            <p className="truncate text-sm font-semibold text-white">{t(pageTitleKeyMap[activePage], lang)}</p>
           </div>
         </div>
 
-        <div className={`flex-1 pt-[calc(3.5rem+env(safe-area-inset-top))] md:pt-0 ${page === 'insights' ? 'overflow-hidden relative' : 'overflow-y-auto'}`}>
+        <div className={`relative flex-1 pt-[calc(3.5rem+env(safe-area-inset-top))] md:pt-0 ${page === 'insights' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+          {isNavigating && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#09090f]/45 backdrop-blur-[1px]">
+              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#14141f]/95 px-4 py-3 text-sm text-gray-300 shadow-[0_12px_32px_rgba(0,0,0,0.35)]">
+                <div className="h-4 w-4 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
+                <span>Loading…</span>
+              </div>
+            </div>
+          )}
           {page === 'dashboard' && (
             <Dashboard data={data} onNavigate={handleNavigate} txSummary={txSummary} properties={properties} />
           )}
