@@ -6,6 +6,13 @@ import { prisma } from './prisma'
 export const DEMO_USER_EMAIL = 'tour-demo@finance-hub.local'
 
 export const authOptions: NextAuthOptions = {
+  cookies: {
+    sessionToken: { name: '__Secure-finance.session-token', options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true } },
+    callbackUrl: { name: '__Secure-finance.callback-url', options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true } },
+    csrfToken: { name: '__Host-finance.csrf-token', options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true } },
+    pkceCodeVerifier: { name: '__Secure-finance.pkce.code_verifier', options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true } },
+    state: { name: '__Secure-finance.state', options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true } },
+  },
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
