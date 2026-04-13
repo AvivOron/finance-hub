@@ -1,6 +1,3 @@
-// Prisma schema for Finance Hub web
-// Docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,23 +8,20 @@ datasource db {
   directUrl = env("DIRECT_DATABASE_URL")
 }
 
-// ─── NextAuth required models ────────────────────────────────────────────────
-
 model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -37,8 +31,7 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -49,145 +42,128 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// ─── Application models ──────────────────────────────────────────────────────
-
-// Editable expense categories — slug matches the string stored in UserData JSON and Transaction rows
 model ExpenseCategory {
   id        String   @id @default(cuid())
-  slug      String   @unique // e.g. "housing", "utilities" — used as the FK everywhere
-  label     String   // display name, editable
-  icon      String   // lucide icon name, e.g. "Home", "Zap"
-  color     String   // tailwind classes, e.g. "text-blue-400 bg-blue-500/10 border-blue-500/20"
+  slug      String   @unique
+  label     String
+  icon      String
+  color     String
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  accounts           Account[]
-  sessions           Session[]
-  userData           UserData?
-  ownedHousehold     Household?         @relation("HouseholdOwner")
-  householdMember    HouseholdMember?
-  transactions       Transaction[]
-  properties         Property[]
-  financialAccounts  FinancialAccount[]
-  monthlySnapshots   MonthlySnapshot[]
-  familyMembers      FamilyMember[]
-  recurringExpenses  RecurringExpense[]
-  variableExpenses   VariableExpense[]
-  incomeSources      IncomeSource[]
-  accountHoldings    AccountHoldings[]
+  id                String             @id @default(cuid())
+  name              String?
+  email             String?            @unique
+  emailVerified     DateTime?
+  image             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  accounts          Account[]
+  accountHoldings   AccountHoldings[]
+  familyMembers     FamilyMember[]
+  financialAccounts FinancialAccount[]
+  ownedHousehold    Household?         @relation("HouseholdOwner")
+  householdMember   HouseholdMember?
+  incomeSources     IncomeSource[]
+  monthlySnapshots  MonthlySnapshot[]
+  properties        Property[]
+  recurringExpenses RecurringExpense[]
+  sessions          Session[]
+  transactions      Transaction[]
+  userData          UserData?
+  variableExpenses  VariableExpense[]
 }
 
-// Stores per-user AI insights — financial data now lives in normalized tables
 model UserData {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  aiInsights    Json?    // { content: string, language: 'en' | 'he', generatedAt: string }
-  updatedAt     DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  aiInsights Json?
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// A household groups users who share the same financial data.
-// Data is always stored under the owner's UserData record.
 model Household {
-  id          String   @id @default(cuid())
-  ownerId     String   @unique
-  inviteToken String?  @unique // shareable invite link token; null = no active invite
-  createdAt   DateTime @default(now())
-
-  owner   User              @relation("HouseholdOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members HouseholdMember[]
+  id          String            @id @default(cuid())
+  ownerId     String            @unique
+  inviteToken String?           @unique
+  createdAt   DateTime          @default(now())
+  owner       User              @relation("HouseholdOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members     HouseholdMember[]
 }
 
-// Credit card transactions imported from Cal/other sources
 model Transaction {
-  id                  String   @id
-  userId              String   // always the household owner's userId (source of truth)
-  date                String   // YYYY-MM-DD
-  merchant            String
-  amount              Float    // charged amount in NIS
-  transactionAmount   Float?   // original amount (may differ for installments)
-  type                String   // רגילה / הוראת קבע / etc
-  calCategory         String?
-  cardLast4           String?
-  accountLabel        String?
-  notes               String?
-  expenseCategory     String?
-  recurringExpenseId  String?  // FK → RecurringExpense (fixed recurring bills)
-  variableExpenseId   String?  // FK → VariableExpense (variable spend buckets)
-  overrideAmount      Float?   // user-corrected amount (replaces amount for calculations)
-  mappingStatus       String   @default("unmapped") // auto | manual | unmapped | ignored
-  importedAt          DateTime @default(now())
-  month               String   // YYYY-MM billing month
-
-  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  recurringExpense  RecurringExpense? @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
-  variableExpense   VariableExpense?  @relation(fields: [variableExpenseId], references: [id], onDelete: SetNull)
+  id                 String            @id
+  userId             String
+  date               String
+  merchant           String
+  amount             Float
+  transactionAmount  Float?
+  type               String
+  calCategory        String?
+  cardLast4          String?
+  accountLabel       String?
+  notes              String?
+  expenseCategory    String?
+  recurringExpenseId String?
+  overrideAmount     Float?
+  mappingStatus      String            @default("unmapped")
+  importedAt         DateTime          @default(now())
+  month              String
+  variableExpenseId  String?
+  recurringExpense   RecurringExpense? @relation(fields: [recurringExpenseId], references: [id], onUpdate: NoAction)
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  variableExpense    VariableExpense?  @relation(fields: [variableExpenseId], references: [id], onUpdate: NoAction)
 
   @@index([userId, month])
   @@index([userId, mappingStatus])
   @@index([userId, variableExpenseId])
 }
 
-// Real estate / property assets tracked separately from accounts
 model Property {
-  id             String   @id @default(cuid())
-  userId         String   // always the household owner's userId
-  name           String
-  address        String?
-  lat            Float?
-  lng            Float?
-  propertyType   String   @default("apartment") // apartment, house, land, commercial, other
-  estimatedValue Float
-  valuationDate  String   // YYYY-MM-DD — when the estimate was recorded
-  description    String?  @db.Text
-  notes                String?  @db.Text
-  aiEstimateReasoning  String?  @db.Text
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String   @id @default(cuid())
+  userId              String
+  name                String
+  address             String?
+  lat                 Float?
+  lng                 Float?
+  propertyType        String   @default("apartment")
+  estimatedValue      Float
+  valuationDate       String
+  description         String?
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  aiEstimateReasoning String?
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
-// ─── Normalized financial data (migrated from UserData.data JSON blob) ──────
-
-// Financial accounts (renamed from 'Account' to avoid clash with NextAuth Account)
 model FinancialAccount {
-  id              String   @id @default(cuid())
-  userId          String   // always the household owner's userId
+  id              String           @id @default(cuid())
+  userId          String
   name            String
-  type            String   // 'asset' | 'liability'
-  kind            String   @default("custom") // 'bank' | 'brokerage' | 'child' | 'piggyBank' | 'custom'
-  owner           String?  // family member name
-  notes           String?  @db.Text
+  type            String
+  kind            String           @default("custom")
+  owner           String?
+  notes           String?
   url             String?
   monthlyDeposit  Float?
   feesFixed       Float?
   feesOnBalance   Float?
   feesOnDeposit   Float?
-  description     String?  @db.Text
-  bankVendor      String?  // 'poalim' | 'other'
-  brokerageVendor String?  // 'excellence' | 'other'
-  sortOrder       Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  snapshotEntries SnapshotEntry[]
+  description     String?
+  bankVendor      String?
+  brokerageVendor String?
+  sortOrder       Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   holdings        AccountHoldings?
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshotEntries SnapshotEntry[]
 
   @@index([userId])
 }
@@ -195,27 +171,25 @@ model FinancialAccount {
 model MonthlySnapshot {
   id        String          @id @default(cuid())
   userId    String
-  date      String          // YYYY-MM
+  date      String
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
-
-  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  entries SnapshotEntry[]
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries   SnapshotEntry[]
 
   @@unique([userId, date])
   @@index([userId])
 }
 
 model SnapshotEntry {
-  id            String    @id @default(cuid())
+  id            String           @id @default(cuid())
   snapshotId    String
   accountId     String
   balance       Float
-  subBalances   Json?     // Record<string, number> — sparse, varies by account kind
+  subBalances   Json?
   lastUpdatedAt DateTime?
-
-  snapshot MonthlySnapshot  @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
-  account  FinancialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account       FinancialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  snapshot      MonthlySnapshot  @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
 
   @@unique([snapshotId, accountId])
 }
@@ -225,26 +199,24 @@ model FamilyMember {
   userId  String
   name    String
   isChild Boolean @default(false)
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, name])
   @@index([userId])
 }
 
 model RecurringExpense {
-  id           String   @id
+  id           String        @id
   userId       String
   name         String
   amount       Float
-  category     String   // ExpenseCategory slug
-  billingCycle String   // 'monthly' | 'yearly'
+  category     String
+  billingCycle String
   owner        String?
-  notes        String?  @db.Text
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
+  notes        String?
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
 
@@ -252,15 +224,14 @@ model RecurringExpense {
 }
 
 model VariableExpense {
-  id       String  @id
-  userId   String
-  name     String
-  category String
-  owner    String?
-  active   Boolean @default(true)
-
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String        @id
+  userId       String
+  name         String
+  category     String
+  owner        String?
+  active       Boolean       @default(true)
   transactions Transaction[]
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -272,43 +243,35 @@ model IncomeSource {
   type         String   @default("salary")
   grossAmount  Float
   netAmount    Float
-  billingCycle String   // 'monthly' | 'yearly'
+  billingCycle String
   owner        String?
-  notes        String?  @db.Text
+  notes        String?
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
-// Investment holdings per financial account — holdings array stays as JSON
-// (uploaded wholesale from XLSX, never queried individually)
 model AccountHoldings {
-  id            String   @id @default(cuid())
-  accountId     String   @unique
+  id            String           @id @default(cuid())
+  accountId     String           @unique
   userId        String
   updatedAt     DateTime
   totalValueNIS Float
-  holdings      Json     // Investment[]
-
-  account FinancialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holdings      Json
+  account       FinancialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Non-owner users who have joined a household
 model HouseholdMember {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   householdId String
-  userId      String   @unique // each user can only be in one household
-  joinedAt    DateTime @default(now())
-
-  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String    @unique
+  joinedAt    DateTime  @default(now())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
