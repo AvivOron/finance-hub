@@ -19,6 +19,9 @@ export async function GET() {
     return NextResponse.json(data)
   } catch (error: any) {
     console.error('Data fetch error', error)
+    if (error?.code === 'P1001' || error?.name === 'PrismaClientInitializationError') {
+      return NextResponse.json({ error: 'Database unavailable' }, { status: 503 })
+    }
     return NextResponse.json(defaultData)
   }
 }

@@ -20,8 +20,17 @@ export function useData() {
   const [txSummary, setTxSummary] = useState<{ byExpense: Record<string, Record<string, number>>; byCategory: Record<string, Record<string, number>> } | null>(null)
 
   useEffect(() => {
+    async function fetchWithRetry(url: string, retries = 10, delayMs = 3000): Promise<Response> {
+      for (let i = 0; i < retries; i++) {
+        const res = await fetch(url)
+        if (res.status !== 503) return res
+        if (i < retries - 1) await new Promise(r => setTimeout(r, delayMs))
+      }
+      return fetch(url)
+    }
+
     Promise.all([
-      fetch(`${BASE}/data`).then(r => r.json()),
+      fetchWithRetry(`${BASE}/data`).then(r => r.json()),
       fetch(`${BASE}/transactions/summary`).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([d, summary]) => {
       setData(d && d.accounts ? d : defaultData)
