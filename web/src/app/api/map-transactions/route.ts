@@ -179,29 +179,29 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // IDs are deterministic (from parse-cal), so skipDuplicates handles re-uploads safely.
-    // Two real identical rows in the same file get different IDs (different row index), so both are saved.
-    const { count } = await prisma.transaction.createMany({
-      skipDuplicates: true,
-      data: mapped.map(t => ({
-        id: t.id,
-        userId: effectiveUserId,
-        date: t.date,
-        merchant: t.merchant,
-        amount: t.amount,
-        transactionAmount: t.transactionAmount ?? null,
-        type: t.type,
-        calCategory: t.calCategory ?? null,
-        cardLast4: t.cardLast4 ?? null,
-        accountLabel: t.accountLabel ?? null,
-        notes: t.notes ?? null,
-        expenseCategory: t.expenseCategory ?? null,
-        recurringExpenseId: t.recurringExpenseId ?? null,
-        variableExpenseId: t.variableExpenseId ?? null,
-        mappingStatus: t.mappingStatus,
-        month: t.month,
-      })),
-    })
+    // IDs are deterministic (from parse-cal), so INSERT ... ON CONFLICT DO NOTHING handles re-uploads safely.
+    // upsert and createMany(skipDuplicates) both use transactions internally, which aren't supported in Neon HTTP mode.
+    const results = await Promise.all(
+      mapped.map(t =>
+        prisma.$executeRaw`
+          INSERT INTO "Transaction" (
+            id, "userId", date, merchant, amount, "transactionAmount", type,
+            "calCategory", "cardLast4", "accountLabel", notes,
+            "expenseCategory", "recurringExpenseId", "variableExpenseId",
+            "mappingStatus", month
+          ) VALUES (
+            ${t.id}, ${effectiveUserId}, ${t.date}, ${t.merchant}, ${t.amount},
+            ${t.transactionAmount ?? null}, ${t.type},
+            ${t.calCategory ?? null}, ${t.cardLast4 ?? null}, ${t.accountLabel ?? null}, ${t.notes ?? null},
+            ${t.expenseCategory ?? null}, ${t.recurringExpenseId ?? null}, ${t.variableExpenseId ?? null},
+            ${t.mappingStatus}, ${t.month}
+          )
+          ON CONFLICT (id) DO NOTHING
+        `.then(rows => rows > 0).catch(() => false)
+      )
+    )
+
+    const count = results.filter(Boolean).length
 
     return NextResponse.json({
       mapped,

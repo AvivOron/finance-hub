@@ -206,21 +206,23 @@ export function Dashboard({ data, onNavigate, txSummary, properties = [] }: Dash
   const [showPropertyInChart, setShowPropertyInChart] = useState(false)
 
   const baseStats = computeMonthStats(data, filterFamilyMembers, filterAccountIds)
+  const effectivePropertyValue = hasFilters ? 0 : totalPropertyValue
   const stats = baseStats.map(s => ({
     ...s,
-    assets: s.assets + totalPropertyValue,
-    netWorth: s.netWorth + totalPropertyValue,
+    assets: s.assets + effectivePropertyValue,
+    netWorth: s.netWorth + effectivePropertyValue,
   }))
   const chartStats = showPropertyInChart ? stats : baseStats
   const latest = stats[stats.length - 1]
   const prev = stats[stats.length - 2]
-
   const currentNetWorth = latest?.netWorth ?? 0
   const currentAssets = latest?.assets ?? 0
   const currentLiabilities = latest?.liabilities ?? 0
   const momChange = latest && prev ? latest.netWorth - prev.netWorth : null
   const momPct =
-    momChange !== null && prev?.netWorth !== 0 ? (momChange / Math.abs(prev.netWorth)) * 100 : null
+    momChange !== null && prev?.netWorth !== 0 && prev != null
+      ? (momChange / Math.abs(prev.netWorth)) * 100
+      : null
 
   const hasData = stats.length > 0
 
@@ -296,7 +298,7 @@ export function Dashboard({ data, onNavigate, txSummary, properties = [] }: Dash
             <ChevronDown size={14} />
           </button>
           {showFilters && (
-            <div className="absolute right-0 mt-2 w-72 bg-[#14141f] border border-white/10 rounded-xl shadow-lg z-50">
+            <div className="absolute ltr:right-0 rtl:left-0 mt-2 w-72 bg-[#14141f] border border-white/10 rounded-xl shadow-lg z-50">
               <div className="p-4 space-y-4 max-h-96 overflow-y-auto">
                 {familyMembers.length > 0 && (
                   <div>
@@ -399,7 +401,7 @@ export function Dashboard({ data, onNavigate, txSummary, properties = [] }: Dash
           accent="emerald"
           sub={
             <>
-              {totalPropertyValue > 0 && (
+              {totalPropertyValue > 0 && !hasFilters && (
                 <span className="text-gray-500 block">
                   <span className="text-gray-400">{fmtShort(currentAssets - totalPropertyValue)}</span> {lang === 'he' ? 'פיננסי' : 'financial'} · <span className="text-gray-400">{fmtShort(totalPropertyValue)}</span> {lang === 'he' ? 'נדל"ן' : 'real estate'}
                 </span>
@@ -500,7 +502,7 @@ export function Dashboard({ data, onNavigate, txSummary, properties = [] }: Dash
           <div className="bg-[#14141f] border border-white/5 rounded-xl p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-sm font-semibold text-gray-300">{t('dashboard.chart.netWorth', lang)}</h2>
-              {totalPropertyValue > 0 && (
+              {totalPropertyValue > 0 && !hasFilters && (
                 <label className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setShowPropertyInChart(v => !v)}>
                   <span className="text-xs text-gray-500">{lang === 'he' ? 'כולל נדל"ן' : 'incl. real estate'}</span>
                   <span className={cn('relative inline-block h-5 w-9 rounded-full transition-colors', showPropertyInChart ? 'bg-indigo-500' : 'bg-white/10')}>
