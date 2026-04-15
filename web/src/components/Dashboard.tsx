@@ -254,6 +254,30 @@ export function Dashboard({ data, onNavigate, txSummary, properties = [] }: Dash
   const savingsRate = monthlyNetIncome > 0 && cashFlow !== null ? (cashFlow / monthlyNetIncome) * 100 : null
   const hasIncomeOrExpenses = monthlyNetIncome > 0 || monthlyExpenses > 0
   const debtToAsset = currentAssets > 0 && currentLiabilities > 0 ? (currentLiabilities / currentAssets) * 100 : null
+
+  // Liquid vs pension breakdown (from latest snapshot)
+  const latestSnapshot = [...data.snapshots].sort((a, b) => a.date.localeCompare(b.date)).at(-1)
+  const liquidAssets = latestSnapshot
+    ? latestSnapshot.entries.reduce((sum, entry) => {
+        const account = data.accounts.find((a) => a.id === entry.accountId)
+        if (!account || account.type !== 'asset') return sum
+        if (filterAccountIds && !filterAccountIds.has(account.id)) return sum
+        if (filterFamilyMembers && !filterFamilyMembers.has(account.owner || 'unassigned')) return sum
+        if ((account.liquidity ?? 'liquid') === 'liquid') return sum + entry.balance
+        return sum
+      }, 0)
+    : 0
+  const pensionAssets = latestSnapshot
+    ? latestSnapshot.entries.reduce((sum, entry) => {
+        const account = data.accounts.find((a) => a.id === entry.accountId)
+        if (!account || account.type !== 'asset') return sum
+        if (filterAccountIds && !filterAccountIds.has(account.id)) return sum
+        if (filterFamilyMembers && !filterFamilyMembers.has(account.owner || 'unassigned')) return sum
+        if (account.liquidity === 'pension') return sum + entry.balance
+        return sum
+      }, 0)
+    : 0
+  const hasPensionAccounts = data.accounts.some((a) => a.type === 'asset' && a.liquidity === 'pension')
   const investmentPortfolio = computeInvestmentPortfolio(data)
   const hasInvestments = investmentPortfolio.length > 0
 
@@ -401,9 +425,15 @@ export function Dashboard({ data, onNavigate, txSummary, properties = [] }: Dash
           accent="emerald"
           sub={
             <>
-              {totalPropertyValue > 0 && !hasFilters && (
+              {(hasPensionAccounts || (totalPropertyValue > 0 && !hasFilters)) && (
                 <span className="text-gray-500 block">
-                  <span className="text-gray-400">{fmtShort(currentAssets - totalPropertyValue)}</span> {lang === 'he' ? 'פיננסי' : 'financial'} · <span className="text-gray-400">{fmtShort(totalPropertyValue)}</span> {lang === 'he' ? 'נדל"ן' : 'real estate'}
+                  {hasPensionAccounts && (
+                    <><span className="text-gray-400">{fmtShort(liquidAssets)}</span> {lang === 'he' ? 'נזיל' : 'liquid'} · <span className="text-gray-400">{fmtShort(pensionAssets)}</span> {lang === 'he' ? 'קצבה' : 'pension'}</>
+                  )}
+                  {hasPensionAccounts && totalPropertyValue > 0 && !hasFilters && ' · '}
+                  {totalPropertyValue > 0 && !hasFilters && (
+                    <><span className="text-gray-400">{fmtShort(totalPropertyValue)}</span> {lang === 'he' ? 'נדל"ן' : 'real estate'}</>
+                  )}
                 </span>
               )}
               {debtToAsset !== null && (
@@ -787,6 +817,7 @@ export function Dashboard({ data, onNavigate, txSummary, properties = [] }: Dash
                           }
                         }
                       }
+                      categoryHoldings.sort((a, b) => b.holding.valueNIS - a.holding.valueNIS)
                       return categoryHoldings.map(({ holding, accountName }, idx) => (
                         <div key={idx} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5">
                           <div className="flex-1">
@@ -840,7 +871,7 @@ function SummaryCard({
         <span className={`p-1.5 rounded-md ${accentMap[accent]}`}>{icon}</span>
       </div>
       <div className="text-xl md:text-2xl font-bold text-white tracking-tight">{value}</div>
-      {sub && <div className="text-xs flex items-center gap-1">{sub}</div>}
+      {sub && <div className="text-xs flex flex-col gap-0.5">{sub}</div>}
     </div>
   )
 }

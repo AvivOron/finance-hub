@@ -3,11 +3,14 @@ export type AccountKind = 'bank' | 'brokerage' | 'child' | 'piggyBank' | 'custom
 export type BankVendor = 'poalim' | 'other'
 export type BrokerageVendor = 'excellence' | 'other'
 
+export type AccountLiquidity = 'liquid' | 'pension'
+
 export interface Account {
   id: string
   name: string
   type: 'asset' | 'liability'
   kind?: AccountKind // undefined treated as 'custom' for backward compatibility
+  liquidity?: AccountLiquidity // undefined treated as 'liquid' for backward compatibility
   owner?: string // family member who owns this account
   notes?: string
   url?: string // vendor website URL

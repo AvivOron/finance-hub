@@ -47,6 +47,7 @@ export async function assembleAppData(userId: string): Promise<AppData> {
     description: a.description ?? undefined,
     bankVendor: a.bankVendor as Account['bankVendor'] ?? undefined,
     brokerageVendor: a.brokerageVendor as Account['brokerageVendor'] ?? undefined,
+    liquidity: (a as any).liquidity as Account['liquidity'] ?? undefined,
   }))
 
   const snapshots: MonthlySnapshot[] = dbSnapshots.map((s) => ({
@@ -145,14 +146,16 @@ export async function saveAccounts(userId: string, accounts: Account[]): Promise
         notes: a.notes ?? null, url: a.url ?? null, monthlyDeposit: a.monthlyDeposit ?? null,
         feesFixed: a.feesFixed ?? null, feesOnBalance: a.feesOnBalance ?? null,
         feesOnDeposit: a.feesOnDeposit ?? null, description: a.description ?? null,
-        bankVendor: a.bankVendor ?? null, brokerageVendor: a.brokerageVendor ?? null, sortOrder: i,
+        bankVendor: a.bankVendor ?? null, brokerageVendor: a.brokerageVendor ?? null,
+        liquidity: a.liquidity ?? null, sortOrder: i,
       },
       create: {
         id: a.id, userId, name: a.name, type: a.type, kind: a.kind ?? 'custom', owner: a.owner ?? null,
         notes: a.notes ?? null, url: a.url ?? null, monthlyDeposit: a.monthlyDeposit ?? null,
         feesFixed: a.feesFixed ?? null, feesOnBalance: a.feesOnBalance ?? null,
         feesOnDeposit: a.feesOnDeposit ?? null, description: a.description ?? null,
-        bankVendor: a.bankVendor ?? null, brokerageVendor: a.brokerageVendor ?? null, sortOrder: i,
+        bankVendor: a.bankVendor ?? null, brokerageVendor: a.brokerageVendor ?? null,
+        liquidity: a.liquidity ?? null, sortOrder: i,
       },
     })
   }

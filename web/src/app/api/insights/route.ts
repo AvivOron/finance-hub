@@ -30,7 +30,8 @@ function buildPrompt(data: AppData, currency: string, language: string = 'en', p
 
   // Accounts
   const accountsSummary = data.accounts.map((a) => {
-    let line = `  - ${a.name} (${a.type}, kind=${a.kind ?? 'custom'}${a.owner ? `, owner=${a.owner}` : ''})`
+    const liquidityTag = a.type === 'asset' ? `, liquidity=${a.liquidity ?? 'liquid'}` : ''
+    let line = `  - ${a.name} (${a.type}, kind=${a.kind ?? 'custom'}${liquidityTag}${a.owner ? `, owner=${a.owner}` : ''})`
     if (a.monthlyDeposit != null) line += `, monthly deposit=${currencySymbol}${a.monthlyDeposit.toLocaleString()}`
     if (a.feesFixed != null) line += `, monthly fee=${currencySymbol}${a.feesFixed.toLocaleString()}`
     if (a.feesOnBalance != null) line += `, management fee on balance=${a.feesOnBalance}%/year`
@@ -49,7 +50,8 @@ function buildPrompt(data: AppData, currency: string, language: string = 'en', p
       const subInfo = e.subBalances
         ? Object.entries(e.subBalances).map(([k, v]) => `${k}=${currencySymbol}${v.toLocaleString()}`).join(', ')
         : ''
-      return `  - ${account.name} (${account.type}): ${currencySymbol}${e.balance.toLocaleString()}${subInfo ? ` [${subInfo}]` : ''}${account.kind === 'bank' && e.subBalances?.investments ? ' (note: investments sub-balance is already invested in stocks/securities, not idle cash)' : ''}`
+      const liquidityTag = account.type === 'asset' ? ` [${account.liquidity ?? 'liquid'}]` : ''
+      return `  - ${account.name} (${account.type}${liquidityTag}): ${currencySymbol}${e.balance.toLocaleString()}${subInfo ? ` [${subInfo}]` : ''}${account.kind === 'bank' && e.subBalances?.investments ? ' (note: investments sub-balance is already invested in stocks/securities, not idle cash)' : ''}`
     }).filter(Boolean).join('\n')
   }
 
@@ -124,6 +126,23 @@ function buildPrompt(data: AppData, currency: string, language: string = 'en', p
       .join('\n')
   }
 
+  // Liquidity breakdown from latest snapshot
+  let liquidityBreakdown = ''
+  if (latest) {
+    let liquidTotal = 0
+    let pensionTotal = 0
+    for (const e of latest.entries) {
+      const account = data.accounts.find((a) => a.id === e.accountId)
+      if (!account || account.type !== 'asset') continue
+      if (account.liquidity === 'pension') pensionTotal += e.balance
+      else liquidTotal += e.balance
+    }
+    const hasPension = data.accounts.some((a) => a.type === 'asset' && a.liquidity === 'pension')
+    if (hasPension) {
+      liquidityBreakdown = `  Liquid assets: ${currencySymbol}${liquidTotal.toLocaleString()}\n  Pension/retirement assets (illiquid): ${currencySymbol}${pensionTotal.toLocaleString()}\n  Liquid % of total assets: ${liquidTotal + pensionTotal > 0 ? ((liquidTotal / (liquidTotal + pensionTotal)) * 100).toFixed(1) : 0}%`
+    }
+  }
+
   // Properties
   let propertiesSummary = ''
   if (properties.length > 0) {
@@ -152,6 +171,7 @@ ${snapshotSummary || '  No snapshots yet'}
 
 **Latest snapshot breakdown (${latest?.date ?? 'N/A'}):**
 ${latestBreakdown || '  No data'}
+${liquidityBreakdown ? `\n**Asset liquidity breakdown:**\n${liquidityBreakdown}` : ''}
 
 **Income sources (active):**
 ${incomeSummary || '  None'}
@@ -195,7 +215,10 @@ Analyze the trend. Is it growing? At what pace? Any concerns?
 Evaluate income vs expenses. Is the savings rate healthy? What's notable?
 
 ## Asset Allocation
-Analyze the mix of account types (bank, brokerage, real estate, etc.). Is it well-diversified? Note: for bank accounts, the "investments" sub-balance represents money already invested in stocks/securities — do NOT recommend moving it to investments. Only the "checking" and "savings" sub-balances are liquid cash. If real estate is present, include it in the overall asset picture.
+Analyze the mix of account types (bank, brokerage, real estate, etc.). Is it well-diversified? Note: for bank accounts, the "investments" sub-balance represents money already invested in stocks/securities — do NOT recommend moving it to investments. Only the "checking" and "savings" sub-balances are liquid cash. If real estate is present, include it in the overall asset picture. Comment on the liquid vs pension/retirement split — is the user over- or under-allocated to illiquid retirement assets relative to their stage of life and cash flow?
+
+## Emergency Fund
+When evaluating emergency cash availability, count: (1) bank checking/savings balances, AND (2) any holdings identified as קרן כספית (money market fund) — these are redeemable within 1 business day and should be treated as near-cash. Do NOT count brokerage stocks, bonds, or pension/retirement assets as emergency-accessible. Assess whether the total covers 3–6 months of expenses.
 
 ## Debt & Liabilities
 Comment on liabilities. Debt-to-asset ratio, any red flags?

@@ -5,7 +5,7 @@ import {
   Plus, Pencil, Trash2, TrendingUp, TrendingDown, Check,
   Landmark, LineChart, Baby, Globe, X, PiggyBank, GripVertical
 } from 'lucide-react'
-import { Account, AccountKind, FamilyMember } from '../types'
+import { Account, AccountKind, AccountLiquidity, FamilyMember } from '../types'
 import { generateId, cn } from '../utils'
 import { useLanguage } from '@/context/LanguageContext'
 import { t } from '@/translations'
@@ -20,6 +20,7 @@ type FormState = {
   name: string
   type: 'asset' | 'liability'
   kind: AccountKind
+  liquidity: AccountLiquidity
   owner: string
   notes: string
   url: string
@@ -32,7 +33,7 @@ type FormState = {
   brokerageVendor: string
 }
 
-const emptyForm: FormState = { name: '', type: 'asset', kind: 'custom', owner: '', notes: '', url: '', monthlyDeposit: '', feesFixed: '', feesOnBalance: '', feesOnDeposit: '', description: '', bankVendor: '', brokerageVendor: '' }
+const emptyForm: FormState = { name: '', type: 'asset', kind: 'custom', liquidity: 'liquid', owner: '', notes: '', url: '', monthlyDeposit: '', feesFixed: '', feesOnBalance: '', feesOnDeposit: '', description: '', bankVendor: '', brokerageVendor: '' }
 
 export const ACCOUNT_KIND_CONFIG: Record<
   Exclude<AccountKind, 'custom'>,
@@ -101,6 +102,7 @@ export function Accounts({ accounts, familyMembers: rawFamilyMembers, onSave }: 
       name: account.name,
       type: account.type,
       kind: account.kind ?? 'custom',
+      liquidity: account.liquidity ?? 'liquid',
       owner: account.owner ?? '',
       notes: account.notes ?? '',
       url: account.url ?? '',
@@ -134,6 +136,7 @@ export function Accounts({ accounts, familyMembers: rawFamilyMembers, onSave }: 
                 name: form.name.trim(),
                 type: form.type,
                 kind: form.kind,
+                liquidity: form.liquidity,
                 owner: form.owner || undefined,
                 notes: form.notes.trim() || undefined,
                 url: form.url.trim() || undefined,
@@ -153,6 +156,7 @@ export function Accounts({ accounts, familyMembers: rawFamilyMembers, onSave }: 
           name: form.name.trim(),
           type: form.type,
           kind: form.kind,
+          liquidity: form.liquidity,
           owner: form.owner || undefined,
           notes: form.notes.trim() || undefined,
           url: form.url.trim() || undefined,
@@ -327,6 +331,32 @@ export function Accounts({ accounts, familyMembers: rawFamilyMembers, onSave }: 
                 ))}
               </div>
             </div>
+            {form.type === 'asset' && (
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                  {lang === 'he' ? 'נזילות' : 'Liquidity'}
+                </label>
+                <div className="flex gap-2">
+                  {([
+                    { value: 'liquid', labelHe: 'נזיל', labelEn: 'Liquid' },
+                    { value: 'pension', labelHe: 'קצבה / פנסיה', labelEn: 'Pension / Retirement' }
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setForm({ ...form, liquidity: opt.value })}
+                      className={cn(
+                        'flex-1 py-2 rounded-lg text-sm font-medium border transition-all',
+                        form.liquidity === opt.value
+                          ? 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300'
+                          : 'bg-transparent border-white/10 text-gray-400 hover:border-white/20'
+                      )}
+                    >
+                      {lang === 'he' ? opt.labelHe : opt.labelEn}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-1.5">
                 {t('accounts.modal.ownerLabel', lang)} <span className="text-gray-600">{t('accounts.modal.ownerOptional', lang)}</span>
@@ -601,6 +631,11 @@ function AccountGroup({
                     <span className="shrink-0 flex items-center gap-1 text-[10px] text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2.5 py-0.5">
                       {ACCOUNT_KIND_CONFIG[account.kind].icon}
                       {ACCOUNT_KIND_CONFIG[account.kind].label.replace(' Account', '')}
+                    </span>
+                  )}
+                  {account.type === 'asset' && account.liquidity === 'pension' && (
+                    <span className="shrink-0 text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full px-2.5 py-0.5">
+                      קצבה
                     </span>
                   )}
                   {account.owner &&
