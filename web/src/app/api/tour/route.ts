@@ -152,11 +152,11 @@ export async function GET(request: Request) {
 
     // Seed mock transactions (delete existing demo ones first)
     await prisma.transaction.deleteMany({ where: { userId: user.id } })
-    await prisma.transaction.createMany({ data: mockTransactions(user.id) })
+    await Promise.all(mockTransactions(user.id).map(tx => prisma.transaction.create({ data: tx })))
 
     // Seed mock properties (delete existing demo ones first)
     await prisma.property.deleteMany({ where: { userId: user.id } })
-    await prisma.property.createMany({ data: mockProperties(user.id) })
+    await Promise.all(mockProperties(user.id).map(p => prisma.property.create({ data: p })))
 
     const now = Math.floor(Date.now() / 1000)
 
