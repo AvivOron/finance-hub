@@ -169,7 +169,7 @@ export async function saveSnapshots(userId: string, snapshots: MonthlySnapshot[]
       where: { userId_date: { userId, date: snap.date } },
       update: { updatedAt: snap.updatedAt ? new Date(snap.updatedAt) : new Date() },
       create: {
-        id: snap.id, userId, date: snap.date,
+        userId, date: snap.date,
         createdAt: snap.createdAt ? new Date(snap.createdAt) : new Date(),
         updatedAt: snap.updatedAt ? new Date(snap.updatedAt) : new Date(),
       },
