@@ -81,9 +81,19 @@ export async function POST(req: NextRequest) {
           const notes = (row[6] ?? '').toString().trim()
 
           // Skip empty rows or footer rows
-          if (!merchant || typeof dateRaw !== 'number') continue
+          if (!merchant || (typeof dateRaw !== 'number' && !dateRaw)) continue
 
-          const date = excelDateToISO(dateRaw)
+          let date: string
+          if (typeof dateRaw === 'number') {
+            date = excelDateToISO(dateRaw)
+          } else {
+            // Text date from manually-edited cells, e.g. "17/5/26" or "17/05/2026"
+            const parts = dateRaw.toString().split('/')
+            if (parts.length !== 3) continue
+            const [d, m, y] = parts
+            const fullYear = y.length === 2 ? `20${y}` : y
+            date = `${fullYear}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+          }
 
           allTransactions.push({
             id: deterministicId(cardLast4, date, merchant, chargeAmount, i),

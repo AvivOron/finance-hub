@@ -216,6 +216,19 @@ export function Dashboard({ data, onNavigate, txSummary, properties = [] }: Dash
   const latest = stats[stats.length - 1]
   const prev = stats[stats.length - 2]
   const currentNetWorth = latest?.netWorth ?? 0
+
+  const snapshotAt = (monthsBack: number) => {
+    const target = stats[stats.length - 1 - monthsBack]
+    return target?.netWorth ?? null
+  }
+  const worth3m = snapshotAt(3)
+  const worth6m = snapshotAt(6)
+  const worth12m = snapshotAt(12)
+  const worthDiff = (past: number | null) =>
+    past !== null ? { abs: currentNetWorth - past, pct: past !== 0 ? ((currentNetWorth - past) / Math.abs(past)) * 100 : null } : null
+  const diff3m = worthDiff(worth3m)
+  const diff6m = worthDiff(worth6m)
+  const diff12m = worthDiff(worth12m)
   const currentAssets = latest?.assets ?? 0
   const currentLiabilities = latest?.liabilities ?? 0
   const momChange = latest && prev ? latest.netWorth - prev.netWorth : null
@@ -529,51 +542,78 @@ export function Dashboard({ data, onNavigate, txSummary, properties = [] }: Dash
         <EmptyState onNavigate={onNavigate} lang={lang} />
       ) : (
         <>
-          <div className="bg-[#14141f] border border-white/5 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-sm font-semibold text-gray-300">{t('dashboard.chart.netWorth', lang)}</h2>
-              {totalPropertyValue > 0 && !hasFilters && (
-                <label className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setShowPropertyInChart(v => !v)}>
-                  <span className="text-xs text-gray-500">{lang === 'he' ? 'כולל נדל"ן' : 'incl. real estate'}</span>
-                  <span className={cn('relative inline-block h-5 w-9 rounded-full transition-colors', showPropertyInChart ? 'bg-indigo-500' : 'bg-white/10')}>
-                    <span className={cn('absolute top-[3px] h-3.5 w-3.5 rounded-full bg-white shadow transition-all', showPropertyInChart ? 'left-[18px]' : 'left-[3px]')} />
-                  </span>
-                </label>
-              )}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-2 bg-[#14141f] border border-white/5 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-sm font-semibold text-gray-300">{t('dashboard.chart.netWorth', lang)}</h2>
+                {totalPropertyValue > 0 && !hasFilters && (
+                  <label className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setShowPropertyInChart(v => !v)}>
+                    <span className="text-xs text-gray-500">{lang === 'he' ? 'כולל נדל"ן' : 'incl. real estate'}</span>
+                    <span className={cn('relative inline-block h-5 w-9 rounded-full transition-colors', showPropertyInChart ? 'bg-indigo-500' : 'bg-white/10')}>
+                      <span className={cn('absolute top-[3px] h-3.5 w-3.5 rounded-full bg-white shadow transition-all', showPropertyInChart ? 'left-[18px]' : 'left-[3px]')} />
+                    </span>
+                  </label>
+                )}
+              </div>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={chartStats} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fill: '#6b7280', fontSize: 11 }}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.08)' }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fill: '#6b7280', fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={fmtShort}
+                    width={72}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    wrapperStyle={tooltipWrapperStyle}
+                    labelStyle={tooltipLabelStyle}
+                    formatter={(v) => [fmt(v as number), t('dashboard.chart.netWorthTooltip', lang)]}
+                    cursor={tooltipCursor}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="netWorth"
+                    stroke="#6366f1"
+                    strokeWidth={2.5}
+                    dot={{ fill: '#6366f1', r: 3, strokeWidth: 0 }}
+                    activeDot={{ r: 5, strokeWidth: 0 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={chartStats} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fill: '#6b7280', fontSize: 11 }}
-                  axisLine={{ stroke: 'rgba(255,255,255,0.08)' }}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fill: '#6b7280', fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={fmtShort}
-                  width={72}
-                />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  wrapperStyle={tooltipWrapperStyle}
-                  labelStyle={tooltipLabelStyle}
-                  formatter={(v) => [fmt(v as number), t('dashboard.chart.netWorthTooltip', lang)]}
-                  cursor={tooltipCursor}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="netWorth"
-                  stroke="#6366f1"
-                  strokeWidth={2.5}
-                  dot={{ fill: '#6366f1', r: 3, strokeWidth: 0 }}
-                  activeDot={{ r: 5, strokeWidth: 0 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+
+            <div className="bg-[#14141f] border border-white/5 rounded-xl p-6 flex flex-col justify-between">
+              <h2 className="text-sm font-semibold text-gray-300 mb-6">{lang === 'he' ? 'שינוי בשווי נטו' : 'Net Worth Change'}</h2>
+              <div className="flex flex-col gap-4 flex-1 justify-center">
+                {([
+                  { label: lang === 'he' ? '3 חודשים' : '3 months', diff: diff3m },
+                  { label: lang === 'he' ? '6 חודשים' : '6 months', diff: diff6m },
+                  { label: lang === 'he' ? '12 חודשים' : '12 months', diff: diff12m },
+                ] as const).map(({ label, diff }) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">{label}</span>
+                    {diff === null ? (
+                      <span className="text-xs text-gray-600">{lang === 'he' ? 'אין נתונים' : 'no data'}</span>
+                    ) : (
+                      <div className={cn('flex items-center gap-2', diff.abs >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                        <span className="text-sm font-semibold">{diff.abs >= 0 ? '+' : ''}{fmt(diff.abs)}</span>
+                        {diff.pct !== null && (
+                          <span className="text-xs opacity-70">({diff.abs >= 0 ? '+' : ''}{diff.pct.toFixed(1)}%)</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           {currentLiabilities !== 0 && (
