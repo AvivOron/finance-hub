@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Anthropic } from '@anthropic-ai/sdk'
 import { Investment } from '@/types'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { ALLOWED_AI_CALLER_EMAIL } from '@/lib/ai-access'
 
 const client = new Anthropic()
 
@@ -16,6 +19,11 @@ export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (session?.user?.email !== ALLOWED_AI_CALLER_EMAIL) {
+      return new NextResponse('Unauthorized', { status: 401 })
+    }
+
     const body: EnrichRequest = await req.json()
     const { holdings } = body
 

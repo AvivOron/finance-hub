@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { read, utils } from 'xlsx'
 import { Investment } from '@/types'
 import { Anthropic } from '@anthropic-ai/sdk'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { ALLOWED_AI_CALLER_EMAIL } from '@/lib/ai-access'
 
 export const runtime = 'nodejs'
 
@@ -92,6 +95,11 @@ function parseExcellenceRow(row: Record<string, any>): ParsedHolding {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (session?.user?.email !== ALLOWED_AI_CALLER_EMAIL) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const formData = await req.formData()
     const file = formData.get('file') as File
     const vendor = formData.get('vendor') as string | null

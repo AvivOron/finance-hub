@@ -139,25 +139,18 @@ export async function saveAccounts(userId: string, accounts: Account[]): Promise
   const incomingIds = accounts.map((a) => a.id)
   for (let i = 0; i < accounts.length; i++) {
     const a = accounts[i]
-    await prisma.financialAccount.upsert({
-      where: { id: a.id },
-      update: {
-        name: a.name, type: a.type, kind: a.kind ?? 'custom', owner: a.owner ?? null,
-        notes: a.notes ?? null, url: a.url ?? null, monthlyDeposit: a.monthlyDeposit ?? null,
-        feesFixed: a.feesFixed ?? null, feesOnBalance: a.feesOnBalance ?? null,
-        feesOnDeposit: a.feesOnDeposit ?? null, description: a.description ?? null,
-        bankVendor: a.bankVendor ?? null, brokerageVendor: a.brokerageVendor ?? null,
-        liquidity: a.liquidity ?? null, sortOrder: i,
-      },
-      create: {
-        id: a.id, userId, name: a.name, type: a.type, kind: a.kind ?? 'custom', owner: a.owner ?? null,
-        notes: a.notes ?? null, url: a.url ?? null, monthlyDeposit: a.monthlyDeposit ?? null,
-        feesFixed: a.feesFixed ?? null, feesOnBalance: a.feesOnBalance ?? null,
-        feesOnDeposit: a.feesOnDeposit ?? null, description: a.description ?? null,
-        bankVendor: a.bankVendor ?? null, brokerageVendor: a.brokerageVendor ?? null,
-        liquidity: a.liquidity ?? null, sortOrder: i,
-      },
-    })
+    const updateData = {
+      name: a.name, type: a.type, kind: a.kind ?? 'custom', owner: a.owner ?? null,
+      notes: a.notes ?? null, url: a.url ?? null, monthlyDeposit: a.monthlyDeposit ?? null,
+      feesFixed: a.feesFixed ?? null, feesOnBalance: a.feesOnBalance ?? null,
+      feesOnDeposit: a.feesOnDeposit ?? null, description: a.description ?? null,
+      bankVendor: a.bankVendor ?? null, brokerageVendor: a.brokerageVendor ?? null,
+      liquidity: a.liquidity ?? null, sortOrder: i,
+    }
+    const { count } = await prisma.financialAccount.updateMany({ where: { id: a.id, userId }, data: updateData })
+    if (count === 0) {
+      await prisma.financialAccount.create({ data: { id: a.id, userId, ...updateData } })
+    }
   }
   await prisma.financialAccount.deleteMany({ where: { userId, id: { notIn: incomingIds } } })
 }
@@ -210,11 +203,11 @@ export async function saveFamilyMembers(userId: string, familyMembers: FamilyMem
 export async function saveExpenses(userId: string, expenses: RecurringExpense[]): Promise<void> {
   const incomingIds = expenses.map((e) => e.id)
   for (const e of expenses) {
-    await prisma.recurringExpense.upsert({
-      where: { id: e.id },
-      update: { name: e.name, amount: e.amount, category: e.category, billingCycle: e.billingCycle, owner: e.owner ?? null, notes: e.notes ?? null, active: e.active },
-      create: { id: e.id, userId, name: e.name, amount: e.amount, category: e.category, billingCycle: e.billingCycle, owner: e.owner ?? null, notes: e.notes ?? null, active: e.active },
-    })
+    const updateData = { name: e.name, amount: e.amount, category: e.category, billingCycle: e.billingCycle, owner: e.owner ?? null, notes: e.notes ?? null, active: e.active }
+    const { count } = await prisma.recurringExpense.updateMany({ where: { id: e.id, userId }, data: updateData })
+    if (count === 0) {
+      await prisma.recurringExpense.create({ data: { id: e.id, userId, ...updateData } })
+    }
   }
   await prisma.recurringExpense.deleteMany({ where: { userId, id: { notIn: incomingIds } } })
 }
@@ -222,11 +215,11 @@ export async function saveExpenses(userId: string, expenses: RecurringExpense[])
 export async function saveVariableExpenses(userId: string, variableExpenses: VariableExpense[]): Promise<void> {
   const incomingIds = variableExpenses.map((e) => e.id)
   for (const e of variableExpenses) {
-    await prisma.variableExpense.upsert({
-      where: { id: e.id },
-      update: { name: e.name, category: e.category, owner: e.owner ?? null, active: e.active },
-      create: { id: e.id, userId, name: e.name, category: e.category, owner: e.owner ?? null, active: e.active },
-    })
+    const updateData = { name: e.name, category: e.category, owner: e.owner ?? null, active: e.active }
+    const { count } = await prisma.variableExpense.updateMany({ where: { id: e.id, userId }, data: updateData })
+    if (count === 0) {
+      await prisma.variableExpense.create({ data: { id: e.id, userId, ...updateData } })
+    }
   }
   await prisma.variableExpense.deleteMany({ where: { userId, id: { notIn: incomingIds } } })
 }
@@ -234,11 +227,11 @@ export async function saveVariableExpenses(userId: string, variableExpenses: Var
 export async function saveIncome(userId: string, income: IncomeSource[]): Promise<void> {
   const incomingIds = income.map((i) => i.id)
   for (const i of income) {
-    await prisma.incomeSource.upsert({
-      where: { id: i.id },
-      update: { name: i.name, type: i.type, grossAmount: i.grossAmount, netAmount: i.netAmount, billingCycle: i.billingCycle, owner: i.owner ?? null, notes: i.notes ?? null, active: i.active },
-      create: { id: i.id, userId, name: i.name, type: i.type, grossAmount: i.grossAmount, netAmount: i.netAmount, billingCycle: i.billingCycle, owner: i.owner ?? null, notes: i.notes ?? null, active: i.active },
-    })
+    const updateData = { name: i.name, type: i.type, grossAmount: i.grossAmount, netAmount: i.netAmount, billingCycle: i.billingCycle, owner: i.owner ?? null, notes: i.notes ?? null, active: i.active }
+    const { count } = await prisma.incomeSource.updateMany({ where: { id: i.id, userId }, data: updateData })
+    if (count === 0) {
+      await prisma.incomeSource.create({ data: { id: i.id, userId, ...updateData } })
+    }
   }
   await prisma.incomeSource.deleteMany({ where: { userId, id: { notIn: incomingIds } } })
 }
@@ -246,11 +239,11 @@ export async function saveIncome(userId: string, income: IncomeSource[]): Promis
 export async function saveAccountHoldings(userId: string, holdings: AccountHoldings[]): Promise<void> {
   const incomingAccountIds = holdings.map((h) => h.accountId)
   for (const h of holdings) {
-    await prisma.accountHoldings.upsert({
-      where: { accountId: h.accountId },
-      update: { updatedAt: new Date(h.updatedAt), totalValueNIS: h.totalValueNIS, holdings: h.holdings as object[] },
-      create: { accountId: h.accountId, userId, updatedAt: new Date(h.updatedAt), totalValueNIS: h.totalValueNIS, holdings: h.holdings as object[] },
-    })
+    const updateData = { updatedAt: new Date(h.updatedAt), totalValueNIS: h.totalValueNIS, holdings: h.holdings as object[] }
+    const { count } = await prisma.accountHoldings.updateMany({ where: { accountId: h.accountId, userId }, data: updateData })
+    if (count === 0) {
+      await prisma.accountHoldings.create({ data: { accountId: h.accountId, userId, ...updateData } })
+    }
   }
   await prisma.accountHoldings.deleteMany({ where: { userId, accountId: { notIn: incomingAccountIds } } })
 }
