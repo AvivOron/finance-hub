@@ -150,9 +150,12 @@ export async function GET(request: Request) {
     // Create or update normalized tables with mock data
     await saveAppData(user.id, generateMockData() as any)
 
-    // Seed mock transactions (delete existing demo ones first)
-    await prisma.transaction.deleteMany({ where: { userId: user.id } })
-    await Promise.all(mockTransactions(user.id).map(tx => prisma.transaction.create({ data: tx })))
+    // Seed mock transactions (upsert by fixed id, then drop any leftovers from a shorter previous run)
+    const mockTxs = mockTransactions(user.id)
+    for (const tx of mockTxs) {
+      await prisma.transaction.upsert({ where: { id: tx.id }, update: tx, create: tx })
+    }
+    await prisma.transaction.deleteMany({ where: { userId: user.id, id: { notIn: mockTxs.map(tx => tx.id) } } })
 
     // Seed mock properties (delete existing demo ones first)
     await prisma.property.deleteMany({ where: { userId: user.id } })
