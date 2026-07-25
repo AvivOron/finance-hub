@@ -19,6 +19,7 @@ interface TransactionsProps {
 type FilterStatus = 'all' | 'auto' | 'manual' | 'unmapped' | 'ignored'
 
 const CAL_TRANSACTIONS_URL = 'https://digital-web.cal-online.co.il/transactions'
+const ISRACARD_TRANSACTIONS_URL = 'https://web.isracard.co.il/transactions'
 
 const STATUS_COLORS: Record<string, string> = {
   auto:     'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
@@ -275,7 +276,7 @@ export function Transactions({ data }: TransactionsProps) {
           />
         </div>
 
-        {uploadedCards.length > 0 ? (
+        {uploadedCards.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {uploadedCards.map(card => (
               <button
@@ -292,19 +293,27 @@ export function Transactions({ data }: TransactionsProps) {
               </button>
             ))}
           </div>
-        ) : (
-          <p className="text-xs text-slate-500">
-            {t('tx.empty.cards', lang)} {formatMonthFull(month, lang)}.{' '}
-            <a
-              href={CAL_TRANSACTIONS_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-slate-400 hover:text-indigo-400 underline underline-offset-2 transition-colors"
-            >
-              {t('tx.empty.cards.hint', lang)}
-            </a>
-          </p>
         )}
+        <p className="text-xs text-slate-500">
+          {uploadedCards.length === 0 && <>{t('tx.empty.cards', lang)} {formatMonthFull(month, lang)}. </>}
+          <a
+            href={CAL_TRANSACTIONS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-slate-400 hover:text-indigo-400 underline underline-offset-2 transition-colors"
+          >
+            Cal
+          </a>
+          {' · '}
+          <a
+            href={ISRACARD_TRANSACTIONS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-slate-400 hover:text-indigo-400 underline underline-offset-2 transition-colors"
+          >
+            Isracard
+          </a>
+        </p>
       </div>
 
       {/* Message */}

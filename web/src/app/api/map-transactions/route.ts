@@ -57,7 +57,7 @@ async function mapWithClaude(
 
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 4096,
+    max_tokens: 8192,
     messages: [
       {
         role: 'user',
@@ -87,10 +87,34 @@ Respond with ONLY a JSON array, one entry per transaction, in the same order:
   const content = message.content[0]
   if (content.type !== 'text') throw new Error('Unexpected response type')
 
+  if (message.stop_reason === 'max_tokens') {
+    throw new Error(`Claude response truncated (max_tokens) mapping ${transactions.length} transactions`)
+  }
+
   const jsonMatch = content.text.match(/\[[\s\S]*\]/)
-  if (!jsonMatch) throw new Error('No JSON array in response')
+  if (!jsonMatch) throw new Error(`No JSON array in response: ${content.text.slice(0, 500)}`)
 
   return JSON.parse(jsonMatch[0]) as MappingResult[]
+}
+
+const BATCH_SIZE = 40
+
+async function mapAllWithClaude(
+  transactions: Transaction[],
+  recurringExpenses: RecurringExpense[],
+  variableExpenses: VariableExpense[],
+  merchantHistory: MerchantHistory[]
+): Promise<MappingResult[]> {
+  const batches: Transaction[][] = []
+  for (let i = 0; i < transactions.length; i += BATCH_SIZE) {
+    batches.push(transactions.slice(i, i + BATCH_SIZE))
+  }
+
+  const results = await Promise.all(
+    batches.map(batch => mapWithClaude(batch, recurringExpenses, variableExpenses, merchantHistory))
+  )
+
+  return results.flat()
 }
 
 export async function POST(req: NextRequest) {
@@ -161,7 +185,7 @@ export async function POST(req: NextRequest) {
     }))
 
     // Map using Claude
-    const mappings = await mapWithClaude(transactions, recurringExpenses ?? [], variableExpenses ?? [], merchantHistory)
+    const mappings = await mapAllWithClaude(transactions, recurringExpenses ?? [], variableExpenses ?? [], merchantHistory)
 
     const variableExpenseIdSet = new Set((variableExpenses ?? []).map(e => e.id))
 
@@ -179,7 +203,23 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // IDs are deterministic (from parse-cal), so INSERT ... ON CONFLICT DO NOTHING handles re-uploads safely.
+    // Cal/Isracard exports are cumulative per card+month (each new export re-lists all
+    // transactions to date with shifted row positions), so ids aren't stable across re-uploads.
+    // Replace any previously-imported rows for the (card, month) pairs in this upload before inserting.
+    const cardMonthPairs = new Map<string, { cardLast4: string; month: string }>()
+    for (const t of transactions) {
+      if (!t.cardLast4) continue
+      cardMonthPairs.set(`${t.cardLast4}|${t.month}`, { cardLast4: t.cardLast4, month: t.month })
+    }
+    await Promise.all(
+      Array.from(cardMonthPairs.values()).map(({ cardLast4, month }) =>
+        prisma.transaction.deleteMany({
+          where: { userId: effectiveUserId, cardLast4, month },
+        })
+      )
+    )
+
+    // IDs are deterministic (from parse-cal), so INSERT ... ON CONFLICT DO NOTHING handles duplicate rows within this upload.
     // upsert and createMany(skipDuplicates) both use transactions internally, which aren't supported in Neon HTTP mode.
     const results = await Promise.all(
       mapped.map(t =>
