@@ -5,6 +5,7 @@
 
 import { prisma } from './prisma'
 import { Prisma } from '@prisma/client'
+import { readThread } from './insights-thread'
 import type { AppData, Account, MonthlySnapshot, SnapshotEntry, FamilyMember, RecurringExpense, VariableExpense, IncomeSource, AccountHoldings, Investment } from '@/types'
 
 export async function assembleAppData(userId: string): Promise<AppData> {
@@ -116,8 +117,8 @@ export async function assembleAppData(userId: string): Promise<AppData> {
     accountHoldings,
   }
 
-  const aiInsights = userData?.aiInsights as AppData['aiInsights'] | null
-  if (aiInsights) result.aiInsights = aiInsights
+  const thread = readThread(userData?.aiInsights)
+  if (thread.length) result.aiInsights = { messages: thread }
 
   return result
 }

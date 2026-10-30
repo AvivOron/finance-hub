@@ -1,149 +1,192 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Sparkles, RefreshCw, AlertCircle, Globe } from 'lucide-react'
-import { AppData } from '../types'
+import { Sparkles, RefreshCw, AlertCircle, Globe, SendHorizontal } from 'lucide-react'
+import { AppData, InsightsMessage } from '../types'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { t } from '@/translations'
-import { cn } from '../utils'
+import { cn, generateId } from '../utils'
 import { renderMarkdown } from './renderMarkdown'
 
 interface InsightsProps {
   data: AppData
   user?: { isDemo?: boolean }
-  onSaveInsights?: (insights: { content: string; language: string; generatedAt: string }) => Promise<void>
 }
 
+// What's streaming in right now: a new report, a reply to the user, or a translation of the latest report
+type Pending = { kind: 'report' | 'reply' | 'translation'; content: string }
 
-export function Insights({ data, user, onSaveInsights }: InsightsProps) {
+async function streamText(res: Response, onText: (text: string) => void): Promise<string> {
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(text || `Error ${res.status}`)
+  }
+  const reader = res.body!.getReader()
+  const decoder = new TextDecoder()
+  let accumulated = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    accumulated += decoder.decode(value, { stream: true })
+    onText(accumulated)
+  }
+  return accumulated
+}
+
+export function Insights({ data, user }: InsightsProps) {
   const { currency } = useCurrency()
   const { lang } = useLanguage()
-  const [content, setContent] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [messages, setMessages] = useState<InsightsMessage[]>(data.aiInsights?.messages ?? [])
+  const [pending, setPending] = useState<Pending | null>(null)
+  const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [generated, setGenerated] = useState(false)
-  const [translating, setTranslating] = useState(false)
-  const [insightsLanguage, setInsightsLanguage] = useState<'en' | 'he' | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
 
   const hasData = data.snapshots.length > 0 || data.accounts.length > 0
   const isDemo = user?.isDemo ?? false
-  const needsTranslation = generated && insightsLanguage && insightsLanguage !== lang
+  const busy = pending !== null
+  const hasReport = messages.some(m => m.kind === 'report')
+  const latestReport = [...messages].reverse().find(m => m.kind === 'report')
+  const needsTranslation = !busy && latestReport && latestReport.language !== lang
 
-  // Load persisted insights on mount
+  // AppData can be stale after replies on another visit — load the stored thread
   useEffect(() => {
-    const aiInsights = (data as any).aiInsights
-    if (aiInsights && aiInsights.content) {
-      setInsightsLanguage(aiInsights.language || 'en')
-      setContent(aiInsights.content)
-      setGenerated(true)
-    }
+    fetch('/finance-hub/api/insights')
+      .then(res => (res.ok ? res.json() : null))
+      .then(body => { if (body?.messages) setMessages(body.messages) })
+      .catch(() => {})
+    return () => abortRef.current?.abort()
   }, [])
 
-  async function generate() {
-    if (abortRef.current) abortRef.current.abort()
+  // Keep the newest content in view
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [messages.length, pending?.content])
+
+  function startRequest() {
+    abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
-
-
-    setLoading(true)
     setError(null)
-    setContent('')
-    setGenerated(false)
-    setInsightsLanguage(null)
+    return controller.signal
+  }
 
+  async function generate() {
+    const signal = startRequest()
+    setPending({ kind: 'report', content: '' })
     try {
       const res = await fetch('/finance-hub/api/insights', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currency, language: lang }),
-        signal: controller.signal
+        signal,
       })
-
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || `Error ${res.status}`)
-      }
-
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let accumulated = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        accumulated += decoder.decode(value, { stream: true })
-
-        setContent(accumulated)
-      }
-
-      setGenerated(true)
-      setInsightsLanguage(lang as 'en' | 'he')
-
-      // Persist insights to database
-      if (onSaveInsights) {
-        await onSaveInsights({
-          content: accumulated,
-          language: lang,
-          generatedAt: new Date().toISOString()
-        })
-      }
+      const content = await streamText(res, text => setPending({ kind: 'report', content: text }))
+      setMessages(prev => [...prev, {
+        id: generateId(), role: 'assistant', kind: 'report', content,
+        language: lang as InsightsMessage['language'], at: new Date().toISOString(),
+      }])
     } catch (err: any) {
-      if (err.name === 'AbortError') return
-      setError(err.message ?? t('insights.error', lang))
+      if (err.name !== 'AbortError') setError(err.message ?? t('insights.error', lang))
     } finally {
-      setLoading(false)
+      setPending(null)
     }
   }
 
-  async function translateInsights() {
-    if (!content || !insightsLanguage || insightsLanguage === lang) return
+  async function sendReply() {
+    const text = draft.trim()
+    if (!text || busy) return
+    const signal = startRequest()
+    const language = lang as InsightsMessage['language']
+    setMessages(prev => [...prev, { id: generateId(), role: 'user', content: text, language, at: new Date().toISOString() }])
+    setDraft('')
+    setPending({ kind: 'reply', content: '' })
+    try {
+      const res = await fetch('/finance-hub/api/insights/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, currency, language: lang }),
+        signal,
+      })
+      const content = await streamText(res, reply => setPending({ kind: 'reply', content: reply }))
+      setMessages(prev => [...prev, { id: generateId(), role: 'assistant', content, language, at: new Date().toISOString() }])
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        // The server saves nothing on failure — drop the optimistic message and give the text back
+        setMessages(prev => prev.slice(0, -1))
+        setDraft(text)
+        setError(err.message ?? t('insights.error', lang))
+      }
+    } finally {
+      setPending(null)
+    }
+  }
 
-    setTranslating(true)
-
-    setContent('')
-    setError(null)
-
+  // Translates the latest report on screen only; the stored copy keeps its original language
+  async function translateLatestReport() {
+    if (!latestReport) return
+    const signal = startRequest()
+    setPending({ kind: 'translation', content: '' })
     try {
       const res = await fetch('/finance-hub/api/translate-insights', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content,
-          fromLanguage: insightsLanguage,
-          toLanguage: lang
-        })
+        body: JSON.stringify({ content: latestReport.content, fromLanguage: latestReport.language, toLanguage: lang }),
+        signal,
       })
-
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || `Error ${res.status}`)
-      }
-
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let accumulated = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        accumulated += decoder.decode(value, { stream: true })
-
-        setContent(accumulated)
-      }
-
-      setInsightsLanguage(lang as 'en' | 'he')
+      const content = await streamText(res, text => setPending({ kind: 'translation', content: text }))
+      setMessages(prev => prev.map(m => m.id === latestReport.id
+        ? { ...m, content, language: lang as InsightsMessage['language'] }
+        : m))
     } catch (err: any) {
-      setError(err.message ?? 'Failed to translate insights')
+      if (err.name !== 'AbortError') setError(err.message ?? 'Failed to translate insights')
     } finally {
-      setTranslating(false)
+      setPending(null)
     }
   }
 
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+
+  function renderMessage(m: InsightsMessage, content = m.content, streaming = false) {
+    const cursor = streaming && <span className="inline-block w-1.5 h-4 bg-indigo-400 ml-0.5 animate-pulse rounded-sm" />
+    if (m.kind === 'report') {
+      return (
+        <div key={m.id} className="bg-[#14141f] border border-white/5 rounded-xl p-5 md:p-6">
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+            <Sparkles size={12} className="text-indigo-400" />
+            {t('insights.report', lang)} · {formatDate(m.at)}
+          </div>
+          {renderMarkdown(content, m.language)}
+          {cursor}
+        </div>
+      )
+    }
+    const mine = m.role === 'user'
+    return (
+      <div key={m.id} className={cn('flex', mine ? 'justify-end' : 'justify-start')}>
+        <div className={cn(
+          'max-w-[85%] rounded-2xl px-4 py-3 text-sm',
+          mine ? 'bg-indigo-500/15 border border-indigo-500/20 text-gray-100 whitespace-pre-wrap' : 'bg-[#14141f] border border-white/5'
+        )}>
+          {mine ? content : renderMarkdown(content, m.language)}
+          {cursor}
+        </div>
+      </div>
+    )
+  }
+
+  const language = lang as InsightsMessage['language']
+  const pendingMessage: InsightsMessage | null = pending && pending.kind !== 'translation'
+    ? { id: 'pending', role: 'assistant', kind: pending.kind === 'report' ? 'report' : undefined, content: pending.content, language, at: new Date().toISOString() }
+    : null
+
   return (
     <div className="absolute inset-0 flex flex-col px-4 py-6 md:px-8 md:py-8">
-      <div className="w-full flex flex-col flex-1 min-h-0 gap-6">
+      <div className="w-full flex flex-col flex-1 min-h-0 gap-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -153,16 +196,16 @@ export function Insights({ data, user, onSaveInsights }: InsightsProps) {
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
-            {needsTranslation && !translating && (
+            {needsTranslation && (
               <button
-                onClick={translateInsights}
+                onClick={translateLatestReport}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-gray-400 hover:text-gray-200 transition-colors"
                 title="Translate to current language"
               >
                 <Globe size={14} />
               </button>
             )}
-            {generated && !loading && !isDemo && (
+            {hasReport && !busy && !isDemo && (
               <button
                 onClick={generate}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-gray-400 hover:text-gray-200 transition-colors"
@@ -182,7 +225,7 @@ export function Insights({ data, user, onSaveInsights }: InsightsProps) {
               {t('insights.empty.message', lang)}
             </p>
           </div>
-        ) : !generated && !loading ? (
+        ) : messages.length === 0 && !busy ? (
           <div className="bg-[#14141f] border border-white/5 rounded-xl p-10 flex flex-col items-center text-center space-y-4">
             <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
               <Sparkles size={28} className="text-indigo-400" />
@@ -195,30 +238,67 @@ export function Insights({ data, user, onSaveInsights }: InsightsProps) {
             </div>
             <button
               onClick={generate}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-sm text-white font-medium transition-colors"
+              disabled={isDemo}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 text-sm text-white font-medium transition-colors"
             >
               <Sparkles size={15} />
               {t('insights.cta.button', lang)}
             </button>
           </div>
         ) : (
-          <div className="flex-1 min-h-0 bg-[#14141f] border border-white/5 rounded-xl p-5 md:p-6 flex flex-col overflow-hidden">
-            {(loading || translating) && !content ? (
-              <div className="flex items-center gap-3 text-gray-500 py-4">
-                <div className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin shrink-0" />
-                <span className="text-sm">
-                  {translating ? 'Translating…' : t('insights.loading', lang)}
-                </span>
-              </div>
-            ) : (
-              <div className="flex-1 overflow-y-auto">
-                {renderMarkdown(content, insightsLanguage ?? lang)}
-                {(loading || translating) && (
-                  <span className="inline-block w-1.5 h-4 bg-indigo-400 ml-0.5 animate-pulse rounded-sm" />
-                )}
+          <>
+            <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-4 pe-1">
+              {messages.map(m =>
+                pending?.kind === 'translation' && m.id === latestReport?.id
+                  ? renderMessage({ ...m, language }, pending.content, true)
+                  : renderMessage(m)
+              )}
+              {pendingMessage && (pendingMessage.content
+                ? renderMessage(pendingMessage, pendingMessage.content, true)
+                : (
+                  <div className="flex items-center gap-3 text-gray-500 py-2">
+                    <div className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin shrink-0" />
+                    <span className="text-sm">
+                      {pending?.kind === 'report' ? t('insights.loading', lang) : t('insights.thinking', lang)}
+                    </span>
+                  </div>
+                ))}
+              {pending?.kind === 'translation' && !pending.content && (
+                <p className="text-sm text-gray-500">{t('insights.translating', lang)}</p>
+              )}
+            </div>
+
+            {hasReport && !isDemo && (
+              <div className="shrink-0 space-y-1.5">
+                <div className="flex items-end gap-2 bg-[#14141f] border border-white/10 focus-within:border-indigo-500/50 rounded-xl p-2">
+                  <textarea
+                    value={draft}
+                    onChange={e => setDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                        e.preventDefault()
+                        sendReply()
+                      }
+                    }}
+                    rows={1}
+                    maxLength={4000}
+                    dir="auto"
+                    placeholder={t('insights.reply.placeholder', lang)}
+                    className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none max-h-40 [field-sizing:content]"
+                  />
+                  <button
+                    onClick={sendReply}
+                    disabled={busy || !draft.trim()}
+                    aria-label={t('insights.reply.send', lang)}
+                    className="shrink-0 p-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 disabled:hover:bg-indigo-500 text-white transition-colors"
+                  >
+                    <SendHorizontal size={16} className="rtl:rotate-180" />
+                  </button>
+                </div>
+                <p className="text-xs text-gray-600 px-1">{t('insights.reply.hint', lang)}</p>
               </div>
             )}
-          </div>
+          </>
         )}
 
         {error && (
@@ -229,7 +309,7 @@ export function Insights({ data, user, onSaveInsights }: InsightsProps) {
         )}
 
         {/* Model attribution */}
-        {(generated || loading) && !error && (
+        {(messages.length > 0 || busy) && !error && (
           <p className="text-xs text-gray-700 text-center">
             {t('insights.attribution', lang)}
           </p>

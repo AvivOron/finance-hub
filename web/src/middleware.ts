@@ -45,7 +45,6 @@ export const config = {
     '/api/household/:path*',
     '/api/transactions/:path*',
     '/api/insights/:path*',
-    '/api/save-insights/:path*',
     '/api/translate-insights/:path*',
     '/api/send-backup/:path*',
     '/api/map-transactions/:path*',

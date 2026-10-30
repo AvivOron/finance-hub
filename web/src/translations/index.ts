@@ -402,6 +402,12 @@ const translations: Record<string, { en: string; he: string }> = {
   'insights.cta.button': { en: 'Generate Insights', he: 'צור תובנות' },
   'insights.loading': { en: 'Analyzing your financial data…', he: 'ניתוח נתונים פיננסיים שלך...' },
   'insights.error': { en: 'Failed to generate insights', he: 'הייצור נכשל' },
+  'insights.report': { en: 'Insights report', he: 'דוח תובנות' },
+  'insights.translating': { en: 'Translating…', he: 'מתרגם…' },
+  'insights.thinking': { en: 'Thinking…', he: 'חושב…' },
+  'insights.reply.placeholder': { en: 'Reply — correct something or add context (e.g. "we sold one of the cars")', he: 'השב — תקן משהו או הוסף הקשר (למשל "מכרנו את אחד הרכבים")' },
+  'insights.reply.send': { en: 'Send', he: 'שלח' },
+  'insights.reply.hint': { en: 'Your replies are remembered and used in future reports', he: 'התשובות שלך נשמרות ומשמשות בדוחות הבאים' },
   'insights.attribution': { en: 'Powered by Claude Opus · Not financial advice', he: 'מופעל על ידי Claude Opus · לא עצה פיננסית' },
 
   // Projections

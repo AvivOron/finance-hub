@@ -45,9 +45,9 @@ npm run typecheck  # Type-check
 
 ## API Routes
 - `GET/POST /api/data` — Load/save AppData
-- `POST /api/insights` — Generate AI insights (Claude Sonnet)
+- `GET/POST /api/insights` — Load the insights thread / generate a new report and append it (Claude Opus)
+- `POST /api/insights/chat` — Reply to the insights thread; user replies feed into future reports
 - `POST /api/translate-insights` — Translate insights to/from Hebrew (Claude Haiku)
-- `POST /api/save-insights` — Persist insights to DB
 - `POST /api/parse-investments` — Parse XLSX holdings file → Investment[]
 - `GET /api/household` — Load/manage household & invite tokens
 - `POST /api/send-backup` — Email backup via Resend

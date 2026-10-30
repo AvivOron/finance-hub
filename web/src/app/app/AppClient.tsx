@@ -89,7 +89,6 @@ export function AppClient({ user }: AppClientProps) {
     saveExpenses,
     saveVariableExpenses,
     saveIncome,
-    saveAiInsights,
     saveAccountHoldings,
     refreshData
   } = useData()
@@ -367,7 +366,7 @@ export function AppClient({ user }: AppClientProps) {
             />
           )}
           {page === 'insights' && (
-            <Insights data={data} user={user} onSaveInsights={saveAiInsights} />
+            <Insights data={data} user={user} />
           )}
           {page === 'projections' && (
             <Projections data={data} />

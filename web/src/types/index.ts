@@ -51,11 +51,17 @@ export interface AppData {
   variableExpenses?: VariableExpense[]
   income?: IncomeSource[]
   accountHoldings?: AccountHoldings[]
-  aiInsights?: {
-    content: string
-    language: 'en' | 'he'
-    generatedAt: string
-  }
+  aiInsights?: { messages: InsightsMessage[] }
+}
+
+// One entry in the AI insights thread: a generated report, a user reply, or an answer to it
+export interface InsightsMessage {
+  id: string
+  role: 'user' | 'assistant'
+  kind?: 'report'
+  content: string
+  language: 'en' | 'he'
+  at: string
 }
 
 export type ExpenseCategory =

@@ -69,15 +69,6 @@ export function useData() {
     await put('/income', income)
   }, [])
 
-  const saveAiInsights = useCallback(async (insights: { content: string; language: string; generatedAt: string }): Promise<void> => {
-    const res = await fetch(`${BASE}/save-insights`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(insights),
-    })
-    if (!res.ok) throw new Error('Failed to save insights')
-  }, [])
-
   const saveAccountHoldings = useCallback(async (accountHoldings: AccountHoldings[]): Promise<void> => {
     setData(prev => ({ ...prev, accountHoldings }))
     await put('/account-holdings', accountHoldings)
@@ -89,5 +80,5 @@ export function useData() {
     setData(d && d.accounts ? d : defaultData)
   }, [])
 
-  return { data, loading, txSummary, saveAccounts, saveSnapshots, saveFamilyMembers, saveExpenses, saveVariableExpenses, saveIncome, saveAiInsights, saveAccountHoldings, refreshData }
+  return { data, loading, txSummary, saveAccounts, saveSnapshots, saveFamilyMembers, saveExpenses, saveVariableExpenses, saveIncome, saveAccountHoldings, refreshData }
 }
