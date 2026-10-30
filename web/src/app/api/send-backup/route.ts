@@ -5,6 +5,7 @@ import { getEffectiveUserId } from '@/lib/household'
 import { assembleAppData } from '@/lib/data'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { expenseMonthlyAmount } from '@/utils'
 import type { AppData, Account, RecurringExpense, IncomeSource } from '@/types'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -42,7 +43,7 @@ function buildHtml(
   // Recurring expense monthly total
   let recurringExpenses = 0
   for (const e of activeExpenses) {
-    recurringExpenses += e.billingCycle === 'yearly' ? e.amount / 12 : e.amount
+    recurringExpenses += expenseMonthlyAmount(e)
   }
 
   // Variable expense avg: 12-month rolling average of non-ignored transactions

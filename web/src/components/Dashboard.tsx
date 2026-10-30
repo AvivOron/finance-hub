@@ -20,7 +20,7 @@ import { VictoryPie, VictoryLabel } from 'victory'
 import { variableSpendingAverage } from '@/lib/variable-spending'
 import { TrendingUp, TrendingDown, Minus, DollarSign, ArrowUpRight, ArrowDownRight, ChevronDown, X, Wallet, Receipt } from 'lucide-react'
 import { AppData } from '../types'
-import { formatCurrency, formatCurrencyShort, formatMonthLabel, formatMonthFull, cn } from '../utils'
+import { formatCurrency, formatCurrencyShort, formatMonthLabel, formatMonthFull, cn, expenseMonthlyAmount } from '../utils'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { useCategories } from '@/hooks/useCategories'
@@ -77,7 +77,7 @@ function computeMonthlyExpenses(data: AppData): { total: number; byCategory: { c
   const byCategory: Record<string, number> = {}
   let total = 0
   for (const e of active) {
-    const monthly = e.billingCycle === 'yearly' ? e.amount / 12 : e.amount
+    const monthly = expenseMonthlyAmount(e)
     total += monthly
     byCategory[e.category] = (byCategory[e.category] ?? 0) + monthly
   }

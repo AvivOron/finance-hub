@@ -17,7 +17,7 @@ import {
   Cell
 } from 'recharts'
 import { RecurringExpense, VariableExpense, ExpenseCategory, FamilyMember } from '../types'
-import { generateId, formatCurrency, formatCurrencyShort, cn } from '../utils'
+import { generateId, formatCurrency, formatCurrencyShort, cn, expenseMonthlyAmount } from '../utils'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { t, tn } from '@/translations'
@@ -38,7 +38,7 @@ type FormState = {
   name: string
   amount: string
   category: ExpenseCategory
-  billingCycle: 'monthly' | 'yearly'
+  billingCycle: RecurringExpense['billingCycle']
   owner: string
   notes: string
 }
@@ -53,7 +53,7 @@ const emptyForm: FormState = {
 }
 
 function monthlyAmount(expense: RecurringExpense): number {
-  return expense.billingCycle === 'yearly' ? expense.amount / 12 : expense.amount
+  return expenseMonthlyAmount(expense)
 }
 
 function calculateCategoryData(expenses: RecurringExpense[], categoryConfig: CategoryConfigMap) {
@@ -174,7 +174,8 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
       const byMonth = txSummary.byExpense[expense.id]
       if (!byMonth || byMonth[lastTxMonth] == null) continue
       const actual = byMonth[lastTxMonth]
-      const set = monthlyAmount(expense)
+      // A bimonthly bill charges its full amount every other month, so compare per bill
+      const set = expense.billingCycle === 'bimonthly' ? expense.amount : monthlyAmount(expense)
       if (set === 0) continue
       const pct = Math.abs((actual - set) / set) * 100
       if (pct > 10) result[expense.id] = { actual, set, pct }
@@ -539,9 +540,9 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
                             >
                               {expense.name}
                             </p>
-                            {expense.billingCycle === 'yearly' && (
+                            {expense.billingCycle !== 'monthly' && (
                               <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5">
-                                {t('expenses.billing.yearly', lang)}
+                                {t(`expenses.billing.${expense.billingCycle}`, lang)}
                               </span>
                             )}
                             {expense.owner && (
@@ -598,12 +599,12 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
                             <p className="text-sm font-medium text-gray-200">
                               {formatCurrency(expense.amount, currency)}
                               <span className="text-xs text-gray-600 ml-1">
-                                {expense.billingCycle === 'yearly' ? t('expenses.billing.perYear', lang) : t('expenses.billing.perMonth', lang)}
+                                {t(expense.billingCycle === 'yearly' ? 'expenses.billing.perYear' : expense.billingCycle === 'bimonthly' ? 'expenses.billing.perTwoMonths' : 'expenses.billing.perMonth', lang)}
                               </span>
                             </p>
-                            {expense.billingCycle === 'yearly' && (
+                            {expense.billingCycle !== 'monthly' && (
                               <p className="text-xs text-gray-600">
-                                {formatCurrency(expense.amount / 12, currency)}{t('expenses.billing.perMonth', lang)}
+                                {formatCurrency(monthlyAmount(expense), currency)}{t('expenses.billing.perMonth', lang)}
                               </p>
                             )}
                           </div>
@@ -785,7 +786,7 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
               <div>
                 <label className="block text-xs font-medium text-gray-400 mb-1.5">{t('expenses.modal.billingCycleLabel', lang)}</label>
                 <div className="flex gap-2">
-                  {(['monthly', 'yearly'] as const).map((cycle) => (
+                  {(['monthly', 'bimonthly', 'yearly'] as const).map((cycle) => (
                     <button
                       key={cycle}
                       onClick={() => setForm({ ...form, billingCycle: cycle })}
@@ -796,7 +797,7 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
                           : 'bg-transparent border-white/10 text-gray-400 hover:border-white/20'
                       )}
                     >
-                      {cycle === 'monthly' ? t('expenses.modal.monthly', lang) : t('expenses.modal.yearly', lang)}
+                      {t(`expenses.modal.${cycle}`, lang)}
                     </button>
                   ))}
                 </div>

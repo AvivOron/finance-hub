@@ -89,7 +89,7 @@ export interface RecurringExpense {
   name: string
   amount: number
   category: ExpenseCategory
-  billingCycle: 'monthly' | 'yearly'
+  billingCycle: 'monthly' | 'bimonthly' | 'yearly'
   owner?: string
   notes?: string
   active: boolean

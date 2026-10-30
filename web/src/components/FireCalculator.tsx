@@ -7,7 +7,7 @@ import { formatCurrency, formatCurrencyShort } from '@/utils'
 import { useCurrency } from '@/context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { t } from '@/translations'
-import { cn } from '@/utils'
+import { cn, expenseMonthlyAmount } from '@/utils'
 import { variableSpendingAverage, type TxSummary } from '@/lib/variable-spending'
 
 
@@ -43,7 +43,7 @@ function getLatestNetWorth(data: AppData): number {
 function getMonthlyExpenses(data: AppData, txSummary: TxSummary | null): number {
   const recurring = (data.expenses || [])
     .filter(e => e.active)
-    .reduce((sum, e) => sum + (e.billingCycle === 'yearly' ? e.amount / 12 : e.amount), 0)
+    .reduce((sum, e) => sum + expenseMonthlyAmount(e), 0)
 
   const variableAvg = getVariableExpensesAvg(data, txSummary)
 

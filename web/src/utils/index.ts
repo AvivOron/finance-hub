@@ -1,4 +1,13 @@
+import type { RecurringExpense } from '@/types'
+
 export type Currency = 'USD' | 'NIS'
+
+const MONTHS_PER_CYCLE: Record<RecurringExpense['billingCycle'], number> = { monthly: 1, bimonthly: 2, yearly: 12 }
+
+// Monthly equivalent of a recurring expense (a bimonthly bill counts half per month)
+export function expenseMonthlyAmount(expense: Pick<RecurringExpense, 'amount' | 'billingCycle'>): number {
+  return expense.amount / (MONTHS_PER_CYCLE[expense.billingCycle] ?? 1)
+}
 
 const CURRENCY_SYMBOL: Record<Currency, string> = { USD: '$', NIS: '₪' }
 
