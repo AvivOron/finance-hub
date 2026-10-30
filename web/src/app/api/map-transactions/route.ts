@@ -49,7 +49,7 @@ async function mapWithClaude(
     .join('\n')
 
   const historySection = merchantHistory.length > 0
-    ? `## Past Merchant→Expense Links (from last 3 months, use as strong hints):\n` +
+    ? `## Past Merchant→Expense Links (set by the user by hand — use as strong hints for the same merchant):\n` +
       merchantHistory
         .map(h => `- merchant: "${h.merchant}" → expense id: ${h.expenseId} | name: "${h.expenseName}" | type: ${h.expenseType} (linked ${h.count}x)`)
         .join('\n')
@@ -77,6 +77,12 @@ For each transaction, determine:
 3. mappingStatus: "auto" if you matched to an expense, "unmapped" otherwise
 
 Use context clues: הוראת קבע = standing order (likely recurring), merchant names in Hebrew, Cal category (ענף).
+
+Matching rules:
+- Israeli merchant names usually end with the branch's town (e.g. "ויקטורי גני תקוה" = Victory supermarket in Ganei Tikva; "שופרסל פתח תקווה"). Ignore the town part when matching. In particular "גני" in a town name like "גני תקווה" / "גני תקוה" / "גני תקו" does NOT mean kindergarten (גן).
+- Match on the business itself (chain/store name) and the Cal category. When calCategory is present it outweighs any loose name similarity: e.g. "מזון ומשקאות" / supermarket must not be linked to a childcare, education or insurance expense.
+- Past links only apply to the same merchant. Do not carry a link over to a different merchant just because both names share a town.
+- When unsure, return null with mappingStatus "unmapped" — an unmapped transaction is better than a wrong link.
 
 Respond with ONLY a JSON array, one entry per transaction, in the same order:
 [{"transactionId":"...","recurringExpenseId":"..." or null,"expenseCategory":"...","mappingStatus":"auto"|"unmapped"}]`
@@ -136,15 +142,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No transactions provided' }, { status: 400 })
     }
 
-    // Fetch last 3 months of manually/auto-mapped transactions to build merchant history
-    const threeMonthsAgo = new Date()
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+    // Build merchant history only from links the user set by hand. Auto links are excluded so a
+    // wrong guess can't be fed back as a "strong hint" and repeat on every later upload.
+    const historySince = new Date()
+    historySince.setMonth(historySince.getMonth() - 12)
 
     const recentMapped = await prisma.transaction.findMany({
       where: {
         userId: effectiveUserId,
-        mappingStatus: { in: ['auto', 'manual'] },
-        date: { gte: threeMonthsAgo.toISOString().slice(0, 10) },
+        mappingStatus: 'manual',
+        date: { gte: historySince.toISOString().slice(0, 10) },
         OR: [
           { recurringExpenseId: { not: null } },
           { variableExpenseId: { not: null } },
@@ -159,8 +166,8 @@ export async function POST(req: NextRequest) {
 
     // Build merchant → expense frequency map
     const allExpenses = [
-      ...(recurringExpenses ?? []).map(e => ({ id: e.id, name: e.name, type: 'recurring' as const })),
-      ...(variableExpenses ?? []).map(e => ({ id: e.id, name: e.name, type: 'variable' as const })),
+      ...(recurringExpenses ?? []).filter(e => e.active).map(e => ({ id: e.id, name: e.name, category: e.category, type: 'recurring' as const })),
+      ...(variableExpenses ?? []).filter(e => e.active).map(e => ({ id: e.id, name: e.name, category: e.category, type: 'variable' as const })),
     ]
     const expenseById = new Map(allExpenses.map(e => [e.id, e]))
 
@@ -184,8 +191,36 @@ export async function POST(req: NextRequest) {
       ...val,
     }))
 
-    // Map using Claude
-    const mappings = await mapAllWithClaude(transactions, recurringExpenses ?? [], variableExpenses ?? [], merchantHistory)
+    // Merchants the user has linked by hand map straight to their dominant expense (more than
+    // half of that merchant's manual links) without asking Claude.
+    const knownMerchant = new Map<string, { expenseId: string; category: ExpenseCategory }>()
+    const byMerchant = new Map<string, MerchantHistory[]>()
+    for (const h of merchantHistory) {
+      byMerchant.set(h.merchant, [...(byMerchant.get(h.merchant) ?? []), h])
+    }
+    for (const [merchant, links] of byMerchant) {
+      const total = links.reduce((s, l) => s + l.count, 0)
+      const top = links.reduce((a, b) => (b.count > a.count ? b : a))
+      if (top.count * 2 > total) {
+        knownMerchant.set(merchant, { expenseId: top.expenseId, category: expenseById.get(top.expenseId)!.category })
+      }
+    }
+
+    const directMappings: MappingResult[] = []
+    const needsClaude: Transaction[] = []
+    for (const t of transactions) {
+      const known = knownMerchant.get(t.merchant)
+      if (known) {
+        directMappings.push({ transactionId: t.id, recurringExpenseId: known.expenseId, expenseCategory: known.category, mappingStatus: 'auto' })
+      } else {
+        needsClaude.push(t)
+      }
+    }
+
+    const claudeMappings = needsClaude.length
+      ? await mapAllWithClaude(needsClaude, recurringExpenses ?? [], variableExpenses ?? [], merchantHistory)
+      : []
+    const mappings = [...directMappings, ...claudeMappings]
 
     const variableExpenseIdSet = new Set((variableExpenses ?? []).map(e => e.id))
 
