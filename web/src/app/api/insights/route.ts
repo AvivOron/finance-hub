@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getEffectiveUserId } from '@/lib/household'
 import { generateId } from '@/utils'
-import { INSIGHTS_MODEL, loadInsightsContext, loadThread, appendToThread, buildReportPrompt } from '@/lib/insights'
+import { INSIGHTS_MODEL, startModelStream, loadInsightsContext, loadThread, appendToThread, buildReportPrompt } from '@/lib/insights'
 import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -38,17 +38,26 @@ export async function POST(request: Request) {
     output_config: { effort: 'high' },
     messages: [{ role: 'user', content: buildReportPrompt(ctx, currency, language, thread) }],
   })
+  const rejected = await startModelStream(stream)
+  if (rejected) return rejected
 
   const encoder = new TextEncoder()
   let fullContent = ''
 
   const readable = new ReadableStream({
     async start(controller) {
+      // Keep generating and save the result even if the browser leaves (reload, navigation):
+      // the model thinks for up to a minute before writing, and a closed stream must not lose the work
+      let clientGone = false
+      const send = (text: string) => {
+        if (clientGone) return
+        try { controller.enqueue(encoder.encode(text)) } catch { clientGone = true }
+      }
       try {
         for await (const chunk of stream) {
           if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
             fullContent += chunk.delta.text
-            controller.enqueue(encoder.encode(chunk.delta.text))
+            send(chunk.delta.text)
           }
         }
 
@@ -65,9 +74,10 @@ export async function POST(request: Request) {
           console.error('Failed to persist insights:', persistError)
         }
 
-        controller.close()
+        if (!clientGone) controller.close()
       } catch (error) {
-        controller.error(error)
+        console.error('Insights stream failed:', error)
+        if (!clientGone) controller.error(error)
       }
     }
   })

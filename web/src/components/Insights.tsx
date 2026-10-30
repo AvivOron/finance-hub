@@ -41,6 +41,7 @@ export function Insights({ data, user }: InsightsProps) {
   const [pending, setPending] = useState<Pending | null>(null)
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [waitSeconds, setWaitSeconds] = useState(0)
   const abortRef = useRef<AbortController | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
 
@@ -60,11 +61,33 @@ export function Insights({ data, user }: InsightsProps) {
     return () => abortRef.current?.abort()
   }, [])
 
-  // Keep the newest content in view
+  // The model thinks before writing (up to a minute for a report), so count the wait
+  const waitingForText = pending !== null && pending.content === ''
   useEffect(() => {
-    const el = scrollRef.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [messages.length, pending?.content])
+    if (!waitingForText) return
+    setWaitSeconds(0)
+    const timer = setInterval(() => setWaitSeconds(s => s + 1), 1000)
+    return () => clearInterval(timer)
+  }, [waitingForText])
+
+  // Open at the top of the latest report (and of a new report as it starts streaming)
+  const reportStreaming = pending?.kind === 'report'
+  const scrolledOnce = useRef(false)
+  useEffect(() => {
+    const container = scrollRef.current
+    const id = reportStreaming ? 'pending' : latestReport?.id
+    const target = id && container?.querySelector<HTMLElement>(`[data-msg-id="${id}"]`)
+    if (!container || !target) return
+    container.scrollTo({ top: target.offsetTop, behavior: scrolledOnce.current ? 'smooth' : 'auto' })
+    scrolledOnce.current = true
+  }, [latestReport?.id, reportStreaming])
+
+  // While a reply streams in, follow it at the bottom
+  const replyContent = pending?.kind === 'reply' ? pending.content : null
+  useEffect(() => {
+    const container = scrollRef.current
+    if (container && replyContent !== null) container.scrollTop = container.scrollHeight
+  }, [replyContent])
 
   function startRequest() {
     abortRef.current?.abort()
@@ -155,7 +178,7 @@ export function Insights({ data, user }: InsightsProps) {
     const cursor = streaming && <span className="inline-block w-1.5 h-4 bg-indigo-400 ml-0.5 animate-pulse rounded-sm" />
     if (m.kind === 'report') {
       return (
-        <div key={m.id} className="bg-[#14141f] border border-white/5 rounded-xl p-5 md:p-6">
+        <div key={m.id} data-msg-id={m.id} className="bg-[#14141f] border border-white/5 rounded-xl p-5 md:p-6">
           <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
             <Sparkles size={12} className="text-indigo-400" />
             {t('insights.report', lang)} · {formatDate(m.at)}
@@ -247,7 +270,7 @@ export function Insights({ data, user }: InsightsProps) {
           </div>
         ) : (
           <>
-            <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-4 pe-1">
+            <div ref={scrollRef} className="relative flex-1 min-h-0 overflow-y-auto space-y-4 pe-1">
               {messages.map(m =>
                 pending?.kind === 'translation' && m.id === latestReport?.id
                   ? renderMessage({ ...m, language }, pending.content, true)
@@ -256,10 +279,12 @@ export function Insights({ data, user }: InsightsProps) {
               {pendingMessage && (pendingMessage.content
                 ? renderMessage(pendingMessage, pendingMessage.content, true)
                 : (
-                  <div className="flex items-center gap-3 text-gray-500 py-2">
+                  <div data-msg-id={pending?.kind === 'report' ? 'pending' : undefined} className="flex items-center gap-3 text-gray-500 py-2">
                     <div className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin shrink-0" />
                     <span className="text-sm">
                       {pending?.kind === 'report' ? t('insights.loading', lang) : t('insights.thinking', lang)}
+                      <span className="text-gray-600 tabular-nums"> · {waitSeconds}s</span>
+                      {pending?.kind === 'report' && <span className="text-gray-600"> · {t('insights.loading.hint', lang)}</span>}
                     </span>
                   </div>
                 ))}

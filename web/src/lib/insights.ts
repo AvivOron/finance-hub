@@ -7,7 +7,9 @@ import { prisma } from './prisma'
 import { assembleAppData } from './data'
 import { variableSpendingAverage } from './variable-spending'
 import { readThread } from './insights-thread'
+import { expenseMonthlyAmount } from '@/utils'
 import type { AppData, MonthlySnapshot, Property, InsightsMessage } from '@/types'
+import type Anthropic from '@anthropic-ai/sdk'
 
 export const INSIGHTS_MODEL = 'claude-opus-5-5'
 
@@ -107,10 +109,10 @@ function buildFinancialData({ data, properties, variableExpensesByCategory }: In
   // Expenses
   const activeExpenses = (data.expenses ?? []).filter((e) => e.active)
   const totalMonthlyExpenses = activeExpenses.reduce((s, e) =>
-    s + (e.billingCycle === 'yearly' ? e.amount / 12 : e.amount), 0)
+    s + expenseMonthlyAmount(e), 0)
   const expensesByCategory: Record<string, number> = {}
   for (const e of activeExpenses) {
-    const monthly = e.billingCycle === 'yearly' ? e.amount / 12 : e.amount
+    const monthly = expenseMonthlyAmount(e)
     expensesByCategory[e.category] = (expensesByCategory[e.category] ?? 0) + monthly
   }
   const expenseSummary = activeExpenses.map((e) =>
@@ -325,4 +327,19 @@ export async function appendToThread(userId: string, messages: InsightsMessage[]
     where: { userId },
     data: { aiInsights: { messages: thread } as object },
   })
+}
+
+// Waits until the API accepts the request, so errors (rate or spend limits, bad requests) reach the
+// browser as a readable HTTP error instead of a stream that breaks mid-way
+export async function startModelStream(stream: ReturnType<Anthropic['messages']['stream']>): Promise<Response | null> {
+  try {
+    await stream.withResponse()
+    return null
+  } catch (error) {
+    console.error('Insights request rejected:', error)
+    // API errors carry the body as { error: { message } }
+    const apiMessage = (error as { error?: { error?: { message?: string } } })?.error?.error?.message
+    const message = apiMessage ?? 'Failed to reach the AI service'
+    return new Response(message, { status: 502 })
+  }
 }
