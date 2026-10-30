@@ -23,6 +23,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { t, tn } from '@/translations'
 import { Modal } from './Accounts'
 import { useCategories, CategoryConfigMap } from '@/hooks/useCategories'
+import { variableSpendingAverage } from '@/lib/variable-spending'
 
 interface ExpensesProps {
   expenses: RecurringExpense[]
@@ -118,34 +119,10 @@ export function Expenses({ expenses, variableExpenses, familyMembers: rawFamilyM
   const totalYearly = totalMonthly * 12
   const categoryData = calculateCategoryData(filteredExpenses, resolvedConfig)
 
-  // Compute 12-month average of all variable spending (mapped variable expenses + unmapped categories)
-  const variableExpenseIds = new Set(filteredVariableExpenses.map(e => e.id))
-  const avgVariable = (() => {
-    if (!txSummary) return null
-    // Merge monthly totals: only variable expense mappings (not recurring) + unmapped categories
-    const combined: Record<string, number> = {}
-    for (const [expenseId, byMonth] of Object.entries(txSummary.byExpense)) {
-      if (!variableExpenseIds.has(expenseId)) continue
-      for (const [month, amt] of Object.entries(byMonth)) {
-        combined[month] = (combined[month] ?? 0) + amt
-      }
-    }
-    return rollingAvgBestEffort(combined, 12)
-  })()
-
-  // Per-category avg for chart stacking (mapped variable expenses + unmapped)
-  const varAvgByCategory = (() => {
-    if (!txSummary) return {} as Record<string, number>
-    const result: Record<string, number> = {}
-    // byExpense = mapped variable expenses; use their category from variableExpenses list
-    for (const ve of filteredVariableExpenses) {
-      const byMonth = txSummary.byExpense[ve.id]
-      if (!byMonth) continue
-      const avg = rollingAvgBestEffort(byMonth, 12)
-      if (avg != null) result[ve.category] = (result[ve.category] ?? 0) + avg
-    }
-    return result
-  })()
+  // Unlinked transactions have no owner, so they only count in the household-wide view
+  const variableAvg = variableSpendingAverage(txSummary, filteredVariableExpenses, { includeUnlinked: !selectedOwner })
+  const avgVariable = variableAvg?.total ?? null
+  const varAvgByCategory = variableAvg?.byCategory ?? {}
 
   const chartData = categoryData.map(d => ({
     ...d,

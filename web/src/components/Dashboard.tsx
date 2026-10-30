@@ -17,6 +17,7 @@ import {
   Legend
 } from 'recharts'
 import { VictoryPie, VictoryLabel } from 'victory'
+import { variableSpendingAverage } from '@/lib/variable-spending'
 import { TrendingUp, TrendingDown, Minus, DollarSign, ArrowUpRight, ArrowDownRight, ChevronDown, X, Wallet, Receipt } from 'lucide-react'
 import { AppData } from '../types'
 import { formatCurrency, formatCurrencyShort, formatMonthLabel, formatMonthFull, cn } from '../utils'
@@ -157,14 +158,6 @@ const tooltipLabelStyle = { color: '#e5e7eb', fontWeight: 600, marginBottom: 4 }
 const tooltipWrapperStyle = { outline: 'none' }
 const tooltipCursor = { fill: 'rgba(255,255,255,0.05)' }
 
-function rollingAvg(byMonth: Record<string, number>, months: number): number | null {
-  const sorted = Object.keys(byMonth).sort()
-  if (!sorted.length) return null
-  const recent = sorted.slice(-months)
-  const sum = recent.reduce((s, m) => s + byMonth[m], 0)
-  return sum / recent.length
-}
-
 export function Dashboard({ data, onNavigate, txSummary, properties = [] }: DashboardProps) {
   const { currency } = useCurrency()
   const { lang } = useLanguage()
@@ -242,25 +235,10 @@ export function Dashboard({ data, onNavigate, txSummary, properties = [] }: Dash
   const { net: monthlyNetIncome, gross: monthlyGrossIncome } = computeMonthlyIncome(data)
   const { total: monthlyExpenses, byCategory: expensesByCategory } = computeMonthlyExpenses(data)
 
-  // Variable expense averages from transaction history
-  const variableExpenseIds = new Set((data.variableExpenses ?? []).map(e => e.id))
-  const avgVariableByCategory = (() => {
-    if (!txSummary) return {} as Record<string, number>
-    const result: Record<string, number> = {}
-    for (const [expenseId, byMonth] of Object.entries(txSummary.byExpense)) {
-      if (!variableExpenseIds.has(expenseId)) continue
-      const ve = (data.variableExpenses ?? []).find(e => e.id === expenseId)
-      if (!ve) continue
-      const avg = rollingAvg(byMonth, 12)
-      if (avg != null) result[ve.category] = (result[ve.category] ?? 0) + avg
-    }
-    for (const [cat, byMonth] of Object.entries(txSummary.byCategory)) {
-      const avg = rollingAvg(byMonth, 12)
-      if (avg != null) result[cat] = (result[cat] ?? 0) + avg
-    }
-    return result
-  })()
-  const avgVariableTotal = Object.values(avgVariableByCategory).reduce((s, v) => s + v, 0)
+  // Variable spending: last 3 months of transaction history
+  const variableAvg = variableSpendingAverage(txSummary, data.variableExpenses ?? [])
+  const avgVariableByCategory = variableAvg?.byCategory ?? {}
+  const avgVariableTotal = variableAvg?.total ?? 0
 
   const totalExpenses = monthlyExpenses + avgVariableTotal
   const cashFlow = monthlyNetIncome > 0 ? monthlyNetIncome - totalExpenses : null

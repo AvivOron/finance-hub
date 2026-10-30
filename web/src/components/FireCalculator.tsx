@@ -8,12 +8,12 @@ import { useCurrency } from '@/context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { t } from '@/translations'
 import { cn } from '@/utils'
+import { variableSpendingAverage, type TxSummary } from '@/lib/variable-spending'
 
-type TxSummary = { byExpense: Record<string, Record<string, number>>; byCategory: Record<string, Record<string, number>> } | null
 
 interface FireCalculatorProps {
   data: AppData
-  txSummary: TxSummary
+  txSummary: TxSummary | null
 }
 
 const FALLBACK_USD_TO_NIS = 3.5
@@ -40,14 +40,7 @@ function getLatestNetWorth(data: AppData): number {
   return total
 }
 
-function rollingAvg12(byMonth: Record<string, number>): number {
-  const months = Object.keys(byMonth).sort().slice(-12)
-  if (!months.length) return 0
-  const total = months.reduce((s, m) => s + byMonth[m], 0)
-  return total / months.length
-}
-
-function getMonthlyExpenses(data: AppData, txSummary: TxSummary): number {
+function getMonthlyExpenses(data: AppData, txSummary: TxSummary | null): number {
   const recurring = (data.expenses || [])
     .filter(e => e.active)
     .reduce((sum, e) => sum + (e.billingCycle === 'yearly' ? e.amount / 12 : e.amount), 0)
@@ -57,17 +50,8 @@ function getMonthlyExpenses(data: AppData, txSummary: TxSummary): number {
   return recurring + variableAvg
 }
 
-function getVariableExpensesAvg(data: AppData, txSummary: TxSummary): number {
-  if (!txSummary || !data.variableExpenses?.length) return 0
-  const variableIds = new Set(data.variableExpenses.filter(e => e.active).map(e => e.id))
-  const combined: Record<string, number> = {}
-  for (const [id, byMonth] of Object.entries(txSummary.byExpense)) {
-    if (!variableIds.has(id)) continue
-    for (const [month, amt] of Object.entries(byMonth)) {
-      combined[month] = (combined[month] ?? 0) + amt
-    }
-  }
-  return rollingAvg12(combined)
+function getVariableExpensesAvg(data: AppData, txSummary: TxSummary | null): number {
+  return variableSpendingAverage(txSummary, data.variableExpenses ?? [])?.total ?? 0
 }
 
 function getMonthlyIncome(data: AppData): number {
