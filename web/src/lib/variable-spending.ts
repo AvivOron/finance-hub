@@ -7,6 +7,31 @@ export type TxSummary = {
 
 export const VARIABLE_AVG_MONTHS = 3
 
+type SummaryTransaction = {
+  month: string
+  amount: number
+  overrideAmount: number | null
+  mappingStatus: string
+  recurringExpenseId: string | null
+  variableExpenseId: string | null
+  expenseCategory: string | null
+}
+
+// Same grouping as /api/transactions/summary: linked transactions by expense, the rest by category
+export function buildTxSummary(transactions: SummaryTransaction[]): TxSummary {
+  const byExpense: TxSummary['byExpense'] = {}
+  const byCategory: TxSummary['byCategory'] = {}
+  for (const tx of transactions) {
+    if (tx.mappingStatus === 'ignored') continue
+    const linkedId = tx.recurringExpenseId ?? tx.variableExpenseId
+    const series = linkedId
+      ? (byExpense[linkedId] ??= {})
+      : (byCategory[tx.expenseCategory ?? 'unlinked'] ??= {})
+    series[tx.month] = (series[tx.month] ?? 0) + (tx.overrideAmount ?? tx.amount)
+  }
+  return { byExpense, byCategory }
+}
+
 /**
  * Average monthly variable spending over the last 3 months that have transactions.
  * Counts transactions linked to a variable expense plus unlinked ones (grouped by their

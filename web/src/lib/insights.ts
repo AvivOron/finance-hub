@@ -5,7 +5,7 @@
 
 import { prisma } from './prisma'
 import { assembleAppData } from './data'
-import { variableSpendingAverage } from './variable-spending'
+import { variableSpendingAverage, buildTxSummary } from './variable-spending'
 import { readThread } from './insights-thread'
 import { expenseMonthlyAmount } from '@/utils'
 import type { AppData, MonthlySnapshot, Property, InsightsMessage } from '@/types'
@@ -31,23 +31,13 @@ export async function loadInsightsContext(userId: string): Promise<InsightsConte
     prisma.property.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }).catch(() => []),
     prisma.transaction.findMany({
       where: { userId, mappingStatus: { not: 'ignored' } },
-      select: { month: true, amount: true, overrideAmount: true, expenseCategory: true, recurringExpenseId: true, variableExpenseId: true },
+      select: { month: true, amount: true, overrideAmount: true, mappingStatus: true, expenseCategory: true, recurringExpenseId: true, variableExpenseId: true },
     }).catch(() => []),
   ])
 
-  // Same shape as /api/transactions/summary so the variable average matches the dashboard
-  const byExpense: Record<string, Record<string, number>> = {}
-  const byCategory: Record<string, Record<string, number>> = {}
-  for (const tx of txns) {
-    const amt = tx.overrideAmount ?? tx.amount
-    const linkedId = tx.recurringExpenseId ?? tx.variableExpenseId
-    const bucket = linkedId
-      ? (byExpense[linkedId] ??= {})
-      : (byCategory[tx.expenseCategory ?? 'unlinked'] ??= {})
-    bucket[tx.month] = (bucket[tx.month] ?? 0) + amt
-  }
+  // Same numbers as the dashboard's variable average
   const variableExpensesByCategory =
-    variableSpendingAverage({ byExpense, byCategory }, data.variableExpenses ?? [])?.byCategory ?? {}
+    variableSpendingAverage(buildTxSummary(txns), data.variableExpenses ?? [])?.byCategory ?? {}
 
   return { data, properties: dbProperties as Property[], variableExpensesByCategory }
 }

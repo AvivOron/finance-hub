@@ -1,11 +1,12 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
 import { getEffectiveUserId } from '@/lib/household'
 import { assembleAppData } from '@/lib/data'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { expenseMonthlyAmount } from '@/utils'
+import { buildBackup, backupContents } from '@/lib/backup'
+import { variableSpendingAverage, buildTxSummary } from '@/lib/variable-spending'
 import type { AppData, Account, RecurringExpense, IncomeSource } from '@/types'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -18,7 +19,8 @@ function buildHtml(
   data: AppData,
   properties: { estimatedValue: number }[],
   userEmail: string,
-  transactions: { month: string; amount: number; overrideAmount?: number | null; mappingStatus: string }[] = [],
+  variableAvg: number,
+  contents: [string, number][],
 ): string {
   const accounts = data.accounts ?? []
   const snapshots = data.snapshots ?? []
@@ -46,22 +48,7 @@ function buildHtml(
     recurringExpenses += expenseMonthlyAmount(e)
   }
 
-  // Variable expense avg: 12-month rolling average of non-ignored transactions
-  const avgVariableTotal = (() => {
-    const nonIgnored = transactions.filter(
-      (tx) => tx.mappingStatus !== 'ignored' && !!(tx as any).variableExpenseId
-    )
-    // sum by month
-    const byMonth: Record<string, number> = {}
-    for (const tx of nonIgnored) {
-      byMonth[tx.month] = (byMonth[tx.month] ?? 0) + (tx.overrideAmount ?? tx.amount)
-    }
-    const months = Object.keys(byMonth).sort().slice(-12)
-    if (months.length === 0) return 0
-    return months.reduce((s, m) => s + byMonth[m], 0) / months.length
-  })()
-
-  const totalExpenses = recurringExpenses + avgVariableTotal
+  const totalExpenses = recurringExpenses + variableAvg
 
   let totalNetIncome = 0
   for (const s of activeIncome) {
@@ -136,8 +123,12 @@ function buildHtml(
       data.accountHoldings?.length
         ? statRow('Investment portfolios', `${data.accountHoldings.length}`)
         : '',
-      transactions.length > 0 ? statRow('Transactions', `${transactions.length}`) : '',
     ].filter(Boolean).join('')))}
+
+    <!-- Backup contents -->
+    ${section('Backup contents', statsTable(
+      contents.map(([label, count]) => statRow(label, `${count}`)).join('')
+    ))}
 
     <!-- Footer -->
     <div style="margin-top:40px;padding-top:20px;border-top:1px solid #1a1a2a;">
@@ -156,22 +147,22 @@ export async function POST() {
 
   try {
     const effectiveUserId = await getEffectiveUserId(session.user.id)
-    const [data, properties, transactions] = await Promise.all([
+    const [data, backup] = await Promise.all([
       assembleAppData(effectiveUserId),
-      prisma.property.findMany({ where: { userId: effectiveUserId } }),
-      prisma.transaction.findMany({ where: { userId: effectiveUserId } }),
+      buildBackup(effectiveUserId, session.user.email),
     ])
+    const variableAvg =
+      variableSpendingAverage(buildTxSummary(backup.transactions), data.variableExpenses ?? [])?.total ?? 0
 
     const dateStr = new Date().toISOString().split('T')[0]
-    const exportData = { ...data, properties, transactions }
-    const jsonStr = JSON.stringify(exportData, null, 2)
+    const jsonStr = JSON.stringify(backup, null, 2)
     const jsonBase64 = Buffer.from(jsonStr).toString('base64')
 
     const { error } = await resend.emails.send({
       from: 'Finance Hub <no-reply@avivo.dev>',
       to: session.user.email,
       subject: `Finance Hub Backup — ${dateStr}`,
-      html: buildHtml(data, properties, session.user.email, transactions),
+      html: buildHtml(data, backup.properties, session.user.email, variableAvg, backupContents(backup)),
       attachments: [
         {
           filename: `finance-hub-backup-${dateStr}.json`,
