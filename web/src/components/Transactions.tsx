@@ -217,9 +217,8 @@ export function Transactions({ data }: TransactionsProps) {
     ignored: baseFiltered.filter(tx => tx.mappingStatus === 'ignored').length,
   }
 
-  const totalAmount = filtered
-    .filter(t => t.mappingStatus !== 'ignored')
-    .reduce((s, t) => s + (t.overrideAmount ?? t.amount), 0)
+  // Sum everything listed (hidden included) so a card's total matches its statement
+  const totalAmount = filtered.reduce((s, t) => s + (t.overrideAmount ?? t.amount), 0)
 
   return (
     <div className="w-full p-6 space-y-6">
@@ -400,7 +399,7 @@ export function Transactions({ data }: TransactionsProps) {
           </div>
           <span className="text-sm text-slate-400">
             {filtered.length} {filtered.length === 1 ? t('tx.count', lang) : t('tx.count.plural', lang)}
-            {filter !== 'ignored' && <> · <span className="text-white font-medium">{fmt(totalAmount)}</span></>}
+            {' · '}<span className="text-white font-medium">{fmt(totalAmount)}</span>
           </span>
         </div>
       )}
